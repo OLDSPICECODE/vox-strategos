@@ -1,0 +1,53 @@
+<div class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+  <div class="bg-white dark:bg-slate-900 w-full max-w-lg rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+    
+    <header class="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+      <div>
+        <h2 class="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">
+          {{ isEditing() ? 'Editar' : 'Nueva' }} <span class="text-primary">Tarea</span>
+        </h2>
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Gestión Técnica Sedapar</p>
+      </div>
+      <button (click)="close.emit()" class="text-slate-400 hover:text-rose-500 transition-colors">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </header>
+
+    <form [formGroup]="taskForm" (ngSubmit)="onSubmit()" class="p-8 space-y-6">
+      <div class="space-y-2">
+        <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Nombre del Trabajo</label>
+        <input formControlName="nombre" type="text" 
+               class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl p-4 text-sm focus:ring-2 focus:ring-primary/20 transition-all outline-none"
+               placeholder="Ej: Análisis de Presión D4">
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div class="space-y-2">
+          <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Prioridad</label>
+          <select formControlName="prioridad" class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl p-4 text-sm cursor-pointer outline-none">
+            @for (opt of priorityOptions; track opt) {
+              <option [value]="opt">{{ opt }}</option>
+            }
+          </select>
+        </div>
+        <div class="space-y-2">
+          <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Entrega</label>
+          <input formControlName="fechaFin" type="date" 
+                 class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl p-4 text-sm outline-none">
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Especificaciones Técnicas</label>
+        <textarea formControlName="descripcion" rows="4" 
+                  class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl p-4 text-sm focus:ring-2 focus:ring-primary/20 transition-all resize-none outline-none"
+                  placeholder="Detalles de la operación..."></textarea>
+      </div>
+
+      <button type="submit" [disabled]="taskForm.invalid"
+              class="w-full py-4 bg-primary text-white text-xs font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-primary/20 hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale cursor-pointer">
+        {{ isEditing() ? 'Guardar Cambios' : 'Crear Tarea Técnica' }}
+      </button>
+    </form>
+  </div>
+</div>

@@ -1,0 +1,107 @@
+<aside
+  class="w-64 bg-white dark:bg-surface-dark border-r border-border-light dark:border-border-dark flex flex-col sticky top-0 h-screen shadow-sm"
+>
+  <div
+    class="p-6 flex items-center gap-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all border-b border-transparent"
+    [routerLink]="['/dashboard/trabajador']"
+  >
+    <div class="bg-primary/10 p-2 rounded-lg text-primary shadow-sm">
+      <span class="material-symbols-outlined text-3xl">water_drop</span>
+    </div>
+    <div>
+      <h1 class="text-base font-bold leading-tight text-slate-900 dark:text-white">Sedapar CRM</h1>
+      <p class="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider">
+        Worker Portal
+      </p>
+    </div>
+  </div>
+
+  <nav class="flex-1 px-3 py-6 space-y-2">
+    <a
+      [routerLink]="['/dashboard/trabajador']"
+      [routerLinkActiveOptions]="{ exact: true }"
+      routerLinkActive="bg-primary/5 text-primary font-bold border-l-4 border-primary"
+      class="flex items-center gap-3 px-4 py-3 rounded-r-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all border-l-4 border-transparent"
+    >
+      <span class="material-symbols-outlined">task_alt</span>
+      <span class="text-sm">My Tasks</span>
+    </a>
+
+    <a
+      [routerLink]="['/dashboard/trabajador/projects']"
+      routerLinkActive="bg-primary/5 text-primary font-bold border-l-4 border-primary"
+      class="flex items-center gap-3 px-4 py-3 rounded-r-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all border-l-4 border-transparent"
+    >
+      <span class="material-symbols-outlined">folder_open</span>
+      <span class="text-sm">Projects</span>
+    </a>
+
+    <a
+      [routerLink]="['/dashboard/trabajador/calendar']"
+      routerLinkActive="bg-primary/5 text-primary font-bold border-l-4 border-primary"
+      class="flex items-center gap-3 px-4 py-3 rounded-r-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all border-l-4 border-transparent"
+    >
+      <span class="material-symbols-outlined">calendar_today</span>
+      <span class="text-sm">Calendar</span>
+    </a>
+  </nav>
+
+  <div
+    class="p-4 mt-auto border-t border-border-light dark:border-border-dark bg-slate-50/50 dark:bg-slate-900/50 space-y-4"
+  >
+    <button
+      (click)="onLogout()"
+      class="flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all font-semibold text-sm"
+    >
+      <span class="material-symbols-outlined">logout</span>
+      <span>Cerrar Sesión</span>
+    </button>
+
+    <a
+      [routerLink]="['/dashboard/trabajador/profile']"
+      routerLinkActive="ring-2 ring-primary/30 bg-white dark:bg-slate-800 shadow-md"
+      class="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer group border border-transparent hover:border-slate-100 dark:hover:border-slate-700"
+    >
+      <div class="relative">
+        <img
+          *ngIf="user()?.photoUrl; else avatarFallback"
+          [src]="user()?.photoUrl"
+          [alt]="user()?.nombreCompleto"
+          class="h-10 w-10 rounded-full object-cover border-2 border-white dark:border-slate-700 shadow-sm"
+        />
+
+        <ng-template #avatarFallback>
+          <div
+            class="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center border-2 border-white dark:border-slate-700 shadow-sm"
+          >
+            <span class="text-primary font-black text-xs uppercase">{{
+              user()?.nombreCompleto?.substring(0, 2)
+            }}</span>
+          </div>
+        </ng-template>
+
+        <div
+          class="absolute bottom-0 right-0 h-3 w-3 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full shadow-sm"
+        ></div>
+      </div>
+
+      <div class="flex flex-col overflow-hidden">
+        <span
+          class="text-sm font-black text-slate-900 dark:text-white truncate group-hover:text-primary transition-colors"
+        >
+          {{ user()?.nombreCompleto || 'Cargando...' }}
+        </span>
+        <span
+          class="text-[10px] font-bold text-slate-500 uppercase tracking-tighter truncate leading-none"
+        >
+          {{ user()?.cargo }}
+        </span>
+      </div>
+
+      <span
+        class="material-symbols-outlined text-slate-300 ml-auto text-sm group-hover:text-primary transition-colors"
+        >chevron_right</span
+      >
+    </a>
+  </div>
+</aside>

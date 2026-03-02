@@ -1,0 +1,111 @@
+<div class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+  <div class="bg-white dark:bg-slate-900 w-full max-w-[640px] rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden border border-slate-200 dark:border-slate-800">
+    
+    <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+      <div class="flex items-center gap-3">
+        <div class="p-2 bg-primary/10 rounded-lg text-primary">
+          <span class="material-symbols-outlined text-[20px]">add_task</span>
+        </div>
+        <div>
+          <h2 class="text-xl font-bold text-slate-900 dark:text-white leading-tight uppercase tracking-tighter">
+            Crear Nueva Tarea
+          </h2>
+          <p class="text-xs text-slate-500 dark:text-gray-400 mt-0.5 uppercase font-bold tracking-widest">
+            Sedapar CRM - Vox Strategos
+          </p>
+        </div>
+      </div>
+      <button (click)="close.emit()" class="p-2 text-gray-400 hover:text-rose-500 rounded-full transition-colors">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <div class="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+      
+      <div class="space-y-2">
+        <label class="block text-sm font-semibold text-slate-700 dark:text-gray-300">
+          Proyecto Vinculado
+        </label>
+        <div class="relative">
+          <select 
+            [(ngModel)]="taskForm.projectId"
+            class="w-full h-12 pl-10 pr-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 outline-none transition-all appearance-none"
+          >
+            <option value="" disabled selected>Selecciona un proyecto activo...</option>
+            @for (project of projects(); track project.id) {
+              <option [value]="project.id">{{ project.nombre }}</option>
+            }
+          </select>
+          <span class="material-symbols-outlined absolute left-3 top-3 text-slate-400 text-[20px]">
+            account_tree
+          </span>
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        <label class="block text-sm font-semibold text-slate-700 dark:text-gray-300">Título de la Tarea</label>
+        <input [(ngModel)]="taskForm.nombre" type="text" placeholder="Ej: Análisis de Presión Nocturna"
+               class="w-full h-12 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 outline-none transition-all" />
+      </div>
+
+      <div class="space-y-2">
+        <label class="block text-sm font-semibold text-slate-700 dark:text-gray-300">Descripción Técnica</label>
+        <textarea [(ngModel)]="taskForm.descripcion" rows="4" placeholder="Detalla los objetivos y materiales necesarios..."
+                  class="w-full p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 outline-none resize-none transition-all"></textarea>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="space-y-2">
+          <label class="block text-sm font-semibold text-slate-700 dark:text-gray-300">Fecha de Entrega</label>
+          <div class="relative">
+            <input [(ngModel)]="taskForm.fechaFin" type="date"
+                   class="w-full h-12 pl-10 pr-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 outline-none" />
+            <span class="material-symbols-outlined absolute left-3 top-3 text-slate-400 text-[20px]">calendar_today</span>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <label class="block text-sm font-semibold text-slate-700 dark:text-gray-300">Prioridad</label>
+          <select [(ngModel)]="taskForm.prioridad"
+                  class="w-full h-12 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 outline-none">
+            <option value="Low">Baja</option>
+            <option value="Medium">Media</option>
+            <option value="High">Alta</option>
+            <option value="Urgent">Urgente</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        <label class="block text-sm font-semibold text-slate-700 dark:text-gray-300">Técnico Asignado</label>
+        <div class="relative">
+          @if (currentUser()?.role === UserRole.TRABAJADOR) {
+            <div class="w-full h-12 pl-10 flex items-center bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-500 font-bold italic">
+              {{ currentUser()?.nombreCompleto }} (Asignado automáticamente)
+            </div>
+            <span class="material-symbols-outlined absolute left-3 top-3 text-primary text-[20px]">engineering</span>
+          } @else {
+            <select [(ngModel)]="taskForm.trabajadorId"
+                    class="w-full h-12 pl-10 pr-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 outline-none">
+              <option value="">Seleccionar técnico en campo...</option>
+              <option [value]="currentUser()?.id">{{ currentUser()?.nombreCompleto }} (Lead Engineer)</option>
+            </select>
+            <span class="material-symbols-outlined absolute left-3 top-3 text-slate-400 text-[20px]">engineering</span>
+          }
+        </div>
+      </div>
+    </div>
+
+    <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/20">
+      <button (click)="close.emit()"
+              class="px-5 h-11 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
+        Cancelar
+      </button>
+      <button (click)="submitTask()"
+              class="px-8 h-11 text-sm font-black text-white bg-primary hover:bg-primary/90 rounded-lg shadow-lg shadow-primary/20 flex items-center gap-2 transition-all active:scale-95">
+        <span>Crear Tarea</span>
+        <span class="material-symbols-outlined text-[18px]">send</span>
+      </button>
+    </div>
+  </div>
+</div>

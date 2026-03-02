@@ -1,0 +1,223 @@
+<div class="flex h-screen bg-slate-50 dark:bg-background-dark overflow-hidden font-sans">
+  <app-sidebar class="flex-shrink-0 z-20 shadow-xl"></app-sidebar>
+
+  <main class="flex-1 overflow-y-auto relative bg-slate-50/50 dark:bg-transparent">
+    <router-outlet></router-outlet>
+
+    @if (isDashboardRoot()) {
+      <div
+        class="p-6 md:p-10 max-w-[1400px] mx-auto animate-in fade-in slide-in-from-bottom-2 duration-500"
+      >
+        <header class="mb-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div class="space-y-1">
+            <h1 class="text-4xl font-black text-slate-900 dark:text-white tracking-tight">
+              Hola, <span class="text-primary">{{ userName() }}</span>
+            </h1>
+            <p class="text-slate-500 dark:text-slate-400 font-bold flex items-center gap-2">
+              <span class="relative flex h-3 w-3">
+                <span
+                  class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"
+                ></span>
+                <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+              </span>
+              Sistema Operativo Sedapar • {{ tasks().length }} Tareas asignadas
+            </p>
+          </div>
+
+          <div
+            class="flex bg-white dark:bg-surface-dark p-1.5 rounded-2xl shadow-sm border border-slate-200 dark:border-border-dark self-start"
+          >
+            <button
+              (click)="filterTasks('all')"
+              [class.bg-primary]="activeFilter() === 'all'"
+              [class.text-white]="activeFilter() === 'all'"
+              [class.shadow-lg]="activeFilter() === 'all'"
+              class="px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all text-slate-500 hover:bg-slate-50"
+            >
+              Todas
+            </button>
+            <button
+              (click)="filterTasks('today')"
+              [class.bg-primary]="activeFilter() === 'today'"
+              [class.text-white]="activeFilter() === 'today'"
+              [class.shadow-lg]="activeFilter() === 'today'"
+              class="px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all text-slate-500 hover:bg-slate-50"
+            >
+              Hoy
+            </button>
+            <button
+              (click)="filterTasks('high')"
+              [class.bg-primary]="activeFilter() === 'high'"
+              [class.text-white]="activeFilter() === 'high'"
+              [class.shadow-lg]="activeFilter() === 'high'"
+              class="px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all text-slate-500 hover:bg-slate-50"
+            >
+              Crítico
+            </button>
+          </div>
+        </header>
+
+        <section
+          class="mb-12 bg-white dark:bg-surface-dark p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-border-dark overflow-hidden relative"
+        >
+          <div class="flex flex-wrap items-center justify-between gap-8 mb-8">
+            <div class="flex items-center gap-8">
+              <div class="flex flex-col">
+                <span class="text-6xl font-black text-slate-900 dark:text-white leading-none">
+                  {{ stats().totalCompletado }}<span class="text-2xl text-primary">%</span>
+                </span>
+                <span class="text-xs font-black text-slate-400 uppercase tracking-widest mt-2"
+                  >Eficiencia de Campo</span
+                >
+              </div>
+              <div class="hidden sm:block h-12 w-[2px] bg-slate-100 dark:bg-slate-800"></div>
+              <div class="space-y-1">
+                <p class="text-sm font-bold text-slate-700 dark:text-slate-300">
+                  Resumen de Estatus
+                </p>
+                <div class="flex gap-4">
+                  <span
+                    class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded"
+                    >DONE: {{ stats().verde.toFixed(0) }}%</span
+                  >
+                  <span class="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded"
+                    >PROG: {{ stats().amarillo.toFixed(0) }}%</span
+                  >
+                </div>
+              </div>
+            </div>
+
+            <div
+              class="flex items-center gap-6 text-[10px] font-black uppercase tracking-tighter text-slate-400"
+            >
+              <div class="flex items-center gap-2">
+                <div class="w-3 h-3 rounded-full bg-emerald-500"></div>
+                <span>Finalizado</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="w-3 h-3 rounded-full bg-amber-500"></div>
+                <span>En Curso</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="w-3 h-3 rounded-full bg-rose-500"></div>
+                <span>Pendiente</span>
+              </div>
+            </div>
+          </div>
+
+          <div
+            class="group relative h-5 w-full bg-slate-100 dark:bg-slate-800 rounded-full flex overflow-hidden p-1 shadow-inner"
+          >
+            <div
+              [style.width.%]="stats().verde"
+              class="bg-emerald-500 rounded-l-full transition-all duration-1000 ease-out"
+            ></div>
+            <div
+              [style.width.%]="stats().amarillo"
+              class="bg-amber-500 transition-all duration-1000 ease-out"
+            ></div>
+            <div
+              [style.width.%]="stats().rojo"
+              class="bg-rose-500 rounded-r-full transition-all duration-1000 ease-out"
+            ></div>
+          </div>
+        </section>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+          @for (task of filteredTasks(); track task.id) {
+            <article
+              (click)="openTaskDetails(task)"
+              class="bg-white dark:bg-surface-dark rounded-[2rem] border border-slate-200 dark:border-border-dark hover:border-primary/40 hover:shadow-2xl transition-all duration-300 flex flex-col group min-h-[320px] cursor-pointer active:scale-[0.98]"
+            >
+              <div class="p-8 flex-1 flex flex-col">
+                <div class="flex justify-between items-start mb-6">
+                  <div
+                    [ngClass]="
+                      task.prioridad === 'High' || task.prioridad === 'Urgent'
+                        ? 'bg-rose-50 text-rose-600 border-rose-100'
+                        : 'bg-blue-50 text-blue-600 border-blue-100'
+                    "
+                    class="px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border shadow-sm"
+                  >
+                    {{ task.prioridad }}
+                  </div>
+
+                  <button
+                    (click)="$event.stopPropagation(); openTaskDetails(task)"
+                    class="text-slate-300 hover:text-primary transition-colors"
+                  >
+                    <span class="material-symbols-outlined">more_horiz</span>
+                  </button>
+                </div>
+
+                <h3
+                  class="text-xl font-bold text-slate-900 dark:text-white mb-3 leading-snug group-hover:text-primary transition-colors line-clamp-2 uppercase"
+                >
+                  {{ task.nombre }}
+                </h3>
+
+                <p
+                  class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-3 mb-6"
+                >
+                  {{ task.descripcion }}
+                </p>
+
+                <div
+                  class="mt-auto pt-6 border-t border-slate-50 dark:border-slate-800 flex items-center justify-between"
+                >
+                  <div class="flex flex-col">
+                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest"
+                      >Fecha Entrega</span
+                    >
+                    <span class="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      {{ task.fechaFin | date: 'dd MMM, yyyy' }}
+                    </span>
+                  </div>
+
+                  <div class="relative" (click)="$event.stopPropagation()">
+                    <select
+                      (change)="onStatusChange(task.id, $event)"
+                      [value]="task.estado"
+                      [ngClass]="getJobColorClass(task.estado)"
+                      class="appearance-none font-black text-[10px] uppercase py-2 pl-4 pr-10 rounded-xl border-none cursor-pointer focus:ring-2 focus:ring-primary/20 shadow-sm transition-colors"
+                    >
+                      <option value="To Do">⚠️ Pendiente</option>
+                      <option value="In Progress">⚙️ En Curso</option>
+                      <option value="Done">✅ Terminado</option>
+                    </select>
+                    <span
+                      class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-xs pointer-events-none opacity-40"
+                      >expand_more</span
+                    >
+                  </div>
+                </div>
+              </div>
+            </article>
+          } @empty {
+            <div class="col-span-full py-20 text-center">
+              <span class="material-symbols-outlined text-6xl text-slate-200 mb-4">task_alt</span>
+              <p class="text-slate-400 font-bold uppercase tracking-widest">
+                No hay tareas pendientes en este filtro
+              </p>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  </main>
+</div>
+
+@if (selectedTask()) {
+  <div
+    class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/20 backdrop-blur-sm animate-in fade-in duration-300"
+  >
+    <div class="h-full w-full max-w-4xl max-h-[90vh] p-4">
+      <app-task-details-modal
+        [task]="selectedTask()!"
+        (close)="closeTaskDetails()"
+        (saved)="handleTaskSaved()"
+      >
+      </app-task-details-modal>
+    </div>
+  </div>
+}

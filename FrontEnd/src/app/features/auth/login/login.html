@@ -1,0 +1,96 @@
+<div class="flex h-screen w-full font-display">
+  <div class="w-full lg:w-1/2 flex flex-col justify-center items-center p-8 bg-background-light dark:bg-background-dark">
+    <div class="w-full max-w-md">
+      
+      <div class="flex items-center gap-3 mb-10 lg:hidden">
+        <span class="material-symbols-outlined text-primary text-4xl">water_drop</span>
+        <span class="text-xl font-black text-gray-900 dark:text-white uppercase">Vox Strategos</span>
+      </div>
+
+      <div class="mb-8">
+        <h1 class="text-4xl font-black text-gray-900 dark:text-white tracking-tight mb-2">Welcome Back</h1>
+        <p class="text-gray-500 dark:text-gray-400">Please enter your details to sign in.</p>
+      </div>
+
+      <form (submit)="onLogin($event)" class="flex flex-col gap-5">
+        
+        <label class="flex flex-col gap-2">
+          <span class="text-sm font-semibold text-gray-900 dark:text-white">Email Address</span>
+          <div class="relative">
+            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">mail</span>
+            <input 
+              (input)="updateEmail($event)"
+              [value]="email()"
+              type="email" 
+              placeholder="name@sedapar.com.pe"
+              class="w-full h-12 pl-11 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1a2c35] text-gray-900 dark:text-white focus:ring-2 focus:ring-primary outline-none transition-all"
+            />
+          </div>
+        </label>
+
+        <label class="flex flex-col gap-2">
+          <div class="flex justify-between">
+            <span class="text-sm font-semibold text-gray-900 dark:text-white">Password</span>
+          </div>
+          <div class="relative">
+            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">lock</span>
+            <input 
+              (input)="updatePassword($event)"
+              [value]="password()"
+              [type]="showPassword() ? 'text' : 'password'"
+              placeholder="Enter your password"
+              class="w-full h-12 pl-11 pr-11 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1a2c35] text-gray-900 dark:text-white focus:ring-2 focus:ring-primary outline-none transition-all"
+            />
+            <button 
+              type="button"
+              (click)="togglePassword()"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary transition-colors">
+              <span class="material-symbols-outlined">
+                {{ showPassword() ? 'visibility_off' : 'visibility' }}
+              </span>
+            </button>
+          </div>
+        </label>
+
+        <div class="flex items-center justify-between text-sm">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" class="rounded text-primary focus:ring-primary w-4 h-4 border-gray-300">
+            <span class="text-gray-600 dark:text-gray-400">Remember me</span>
+          </label>
+          <a href="#" class="font-bold text-primary hover:text-blue-600">Forgot password?</a>
+        </div>
+
+        <button 
+          type="submit"
+          class="w-full h-12 bg-primary hover:bg-blue-600 text-white font-bold rounded-lg shadow-md transition-all active:scale-95">
+          Sign In
+        </button>
+      </form>
+
+      <div class="relative my-8">
+        <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-200 dark:border-gray-700"></div></div>
+        <span class="relative px-4 mx-auto block w-max bg-background-light dark:bg-background-dark text-xs text-gray-400 uppercase tracking-widest">Or continue with</span>
+      </div>
+
+      <div class="flex gap-4">
+        <button class="flex-1 flex items-center justify-center gap-2 h-12 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1a2c35] text-gray-700 dark:text-white text-sm font-medium hover:bg-gray-50 transition-colors">
+          <img src="https://www.google.com/favicon.ico" class="w-5 h-5" alt="G"> Google
+        </button>
+        <button class="flex-1 flex items-center justify-center gap-2 h-12 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1a2c35] text-gray-700 dark:text-white text-sm font-medium hover:bg-gray-50 transition-colors">
+          <svg class="w-5 h-5 text-[#0078d4]" fill="currentColor" viewBox="0 0 23 23"><path d="M0 0h11.377v11.377H0V0zm11.96 0H23.33v11.377H11.96V0zM0 11.96h11.377V23.33H0V11.96zm11.96 0H23.33V23.33H11.96V11.96z"></path></svg>
+          Microsoft
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="relative hidden lg:flex w-1/2 h-full bg-cover bg-center" style="background-image: url('misti.jpg');">
+    <div class="absolute inset-0 bg-gradient-to-t from-primary/60 to-transparent mix-blend-multiply"></div>
+    <div class="relative z-10 flex flex-col justify-end p-16 text-white h-full w-full">
+      <span class="material-symbols-outlined text-6xl mb-4">water_drop</span>
+      <h2 class="text-4xl font-bold leading-tight mb-4 uppercase tracking-tighter">Efficient Management for <span class="text-blue-200">Vox Strategos</span></h2>
+      <p class="text-lg opacity-90 max-w-md font-medium">Streamlining operations and project delivery for a better community service.</p>
+      <div class="mt-8 text-xs opacity-50 uppercase tracking-widest">© 2026 VOX STRATEGOS PM</div>
+    </div>
+  </div>
+</div>

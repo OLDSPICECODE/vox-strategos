@@ -1,0 +1,26 @@
+/* Selección Celeste Mate Evidente */
+.active-selection-mate {
+  background-color: #E0F2FE !important; /* Celeste mate claro */
+  color: #0369A1 !important; 
+  border-left: 4px solid #0EA5E9;
+  border-radius: 0 12px 12px 0 !important;
+  font-weight: 900;
+}
+
+.active-selection-mate .material-symbols-outlined {
+  color: #0369A1 !important;
+  opacity: 1 !important;
+  font-variation-settings: 'FILL' 1;
+}
+
+/* Transición suave para el ancho */
+.transition-all {
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 300ms;
+}
+
+/* Ocultar scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  display: none;
+}

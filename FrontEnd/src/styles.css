@@ -1,0 +1,55 @@
+/* 1. Imports externos siempre primero */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+@import "tailwindcss";
+@import "../node_modules/frappe-gantt/dist/frappe-gantt.css";
+
+/* 2. Configuración de Variables de Tema */
+@theme {
+  --color-primary: #0da6f2;
+  --color-background-light: #f5f7f8;
+  --color-background-dark: #101c22;
+}
+
+/* 3. Estilos Globales de Tipografía */
+body {
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased; /* Contraste nítido para oficina */
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 4. Configuración Maestra de Iconos (Material Symbols) */
+.material-symbols-outlined {
+  /* Evita que se renderice como texto 'PENNANT' o 'SEARCH' */
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  display: inline-block;
+  vertical-align: middle;
+  font-feature-settings: 'liga'; /* Vital para que funcionen las ligaduras */
+}
+
+/* Relleno visual cuando el menú está seleccionado */
+.active-link .material-symbols-outlined {
+  font-variation-settings: 'FILL' 1;
+}
+
+/* 5. Clases de Utilidad de Alto Contraste */
+.badge {
+  @apply px-2 py-0.5 text-[10px] font-black rounded border-2 uppercase;
+}
+
+.badge.urgent { @apply bg-red-100 text-red-900 border-red-200; }
+.badge.high { @apply bg-orange-100 text-orange-900 border-orange-200; }
+
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined' !important; /* Fuerza la fuente */
+  font-weight: normal;
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'liga'; /* Vital para convertir PENNANT en icono */
+}

@@ -1,0 +1,59 @@
+/* src/app/features/pmi/pmi-gantt/pmi-gantt.css */
+
+:host {
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* Reducimos el z-index para que el botón azul del sidebar (z-index alto) se vea */
+  z-index: 5;
+  background: white;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+:host-context(.max-w-7xl) {
+  max-width: none !important;
+  width: 100% !important;
+}
+
+/* SUPER-NAVBAR */
+.sub-navbar {
+  height: 80px;
+  width: 100%;
+  padding: 0 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: white;
+  border-bottom: 1px solid #f1f5f9;
+  position: relative; /* Cambiado de sticky para evitar conflictos de capas */
+  z-index: 10;
+}
+
+/* VIEWPORT DEL MAPA INTERACTIVO */
+.gantt-map-surface {
+  /* Forzamos el alto exacto para que el SVG tenga espacio donde dibujarse */
+  height: calc(100% - 80px);
+  width: 100%;
+  overflow: auto;
+  background-color: #fcfdfe;
+  /* Patrón de rejilla de mapa */
+  background-image:
+    linear-gradient(#f1f5f9 1px, transparent 1px),
+    linear-gradient(90deg, #f1f5f9 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Estilo para las barras del diagrama nativo */
+::ng-deep .native-bar {
+  rx: 8;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+}
+
+.active-selection-mate {
+  background-color: #f0f9ff !important;
+  border-left: 4px solid #0ea5e9 !important;
+}

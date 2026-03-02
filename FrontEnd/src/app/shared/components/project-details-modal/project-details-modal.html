@@ -1,0 +1,259 @@
+<div
+  class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[9999] flex items-center justify-center p-4"
+>
+  <div
+    class="bg-white dark:bg-slate-900 w-full max-w-6xl max-h-[92vh] rounded-[3rem] shadow-2xl flex flex-col overflow-hidden border border-slate-200 dark:border-slate-800 animate-in zoom-in duration-300"
+  >
+    <header
+      class="flex items-center justify-between px-10 py-8 border-b border-slate-100 dark:border-slate-800 shrink-0"
+    >
+      <div class="flex items-center gap-5">
+        <div class="p-4 bg-primary/10 rounded-2xl text-primary shadow-sm">
+          <span class="material-symbols-outlined text-3xl">water_drop</span>
+        </div>
+        <div>
+          <div class="flex items-center gap-3">
+            <h2
+              class="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight uppercase"
+            >
+              {{ project.nombre }}
+            </h2>
+            <span
+              class="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-teal-500/10 text-teal-600 border border-teal-500/20"
+            >
+              {{ project.estado || 'Activo' }}
+            </span>
+          </div>
+          <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
+            ID: {{ project.idCodigo }} • Inicio: {{ project.fechaInicio | date: 'dd/MM/yyyy' }}
+          </p>
+        </div>
+      </div>
+      <button
+        (click)="close.emit()"
+        class="p-3 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-all text-slate-400"
+      >
+        <span class="material-symbols-outlined text-2xl">close</span>
+      </button>
+    </header>
+
+    <div class="flex-1 overflow-y-auto custom-scrollbar p-10 bg-white dark:bg-slate-900">
+      <div
+        class="mb-12 p-8 bg-slate-50 dark:bg-slate-800/50 rounded-[2.5rem] border border-slate-100 dark:border-slate-800"
+      >
+        <div class="flex justify-between items-end mb-6 px-2">
+          <div>
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">
+              Completitud del Proyecto
+            </p>
+            <h3 class="text-5xl font-black text-slate-900 dark:text-slate-100 tracking-tighter">
+              {{ project.progreso || 0 }}%
+            </h3>
+          </div>
+          <p class="text-xs font-bold text-primary uppercase tracking-widest">
+            {{ getDaysToPhase() }} días para el siguiente hito
+          </p>
+        </div>
+        <div
+          class="h-5 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden p-1.5 shadow-inner"
+        >
+          <div
+            class="h-full bg-primary rounded-full transition-all duration-1000 shadow-[0_0_15px_rgba(17,115,212,0.4)]"
+            [style.width.%]="project.progreso || 0"
+          ></div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
+        <div class="lg:col-span-2 space-y-12">
+          <section>
+            <h4
+              class="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-6 flex items-center gap-3"
+            >
+              <span class="material-symbols-outlined text-primary text-lg">description</span>
+              Descripción Técnica
+            </h4>
+            <p
+              class="text-slate-600 dark:text-slate-300 leading-relaxed text-base font-medium mb-8"
+            >
+              {{ project.descripcion }}
+            </p>
+          </section>
+
+          <section>
+            <h4
+              class="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-6 flex items-center gap-2"
+            >
+              <span class="material-symbols-outlined text-lg">assignment</span> Tareas en Ejecución
+            </h4>
+            <div class="space-y-3">
+              @for (job of project.trabajos; track job.id) {
+                <div
+                  (click)="openJobDetail.emit(job)"
+                  class="flex items-center justify-between p-5 bg-slate-50 dark:bg-slate-800/40 rounded-3xl border border-slate-100 dark:border-slate-800 hover:border-primary/50 hover:bg-white dark:hover:bg-slate-800 transition-all group cursor-pointer shadow-sm hover:shadow-md"
+                >
+                  <div class="flex items-center gap-4">
+                    <div
+                      class="p-3 bg-white dark:bg-slate-800 rounded-2xl text-primary shadow-sm group-hover:scale-110 transition-transform"
+                    >
+                      <span class="material-symbols-outlined text-xl">engineering</span>
+                    </div>
+                    <div>
+                      <h5
+                        class="text-sm font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight"
+                      >
+                        {{ job.nombre }}
+                      </h5>
+                      <p class="text-[10px] text-slate-400 font-bold uppercase">
+                        {{ job.estado }} • Prioridad {{ job.prioridad }}
+                      </p>
+                    </div>
+                  </div>
+                  <div
+                    class="flex items-center gap-2 text-primary opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0"
+                  >
+                    <span class="text-[10px] font-black uppercase tracking-widest"
+                      >Ver Detalles</span
+                    >
+                    <span class="material-symbols-outlined text-lg">arrow_forward</span>
+                  </div>
+                </div>
+              }
+            </div>
+          </section>
+
+          <section>
+            <h4
+              class="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-8 flex items-center gap-3"
+            >
+              <span class="material-symbols-outlined text-primary text-lg">event_upcoming</span>
+              Cronograma de Hitos
+            </h4>
+            <div
+              class="relative ml-4 border-l-2 border-slate-100 dark:border-slate-800 pl-8 space-y-10"
+            >
+              @for (hito of project.hitos; track hito.nombre) {
+                <div class="relative">
+                  <div
+                    class="absolute -left-[41px] top-0 w-5 h-5 rounded-full border-4 border-white dark:border-slate-900 shadow-sm"
+                    [ngClass]="{
+                      'bg-teal-500': hito.estado === 'completed',
+                      'bg-primary': hito.estado === 'in-progress',
+                      'bg-slate-200': hito.estado === 'scheduled',
+                    }"
+                  ></div>
+                  <div class="flex justify-between items-start">
+                    <h5
+                      class="text-sm font-black text-slate-900 dark:text-slate-100 uppercase tracking-tight"
+                    >
+                      {{ hito.nombre }}
+                    </h5>
+                    <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                      {{ hito.fecha | date: 'dd MMM, yyyy' }}
+                    </span>
+                  </div>
+                  <p class="text-xs font-medium text-slate-500 mt-2">{{ hito.descripcion }}</p>
+                </div>
+              }
+            </div>
+          </section>
+        </div>
+
+        <div class="space-y-10">
+          <section
+            class="bg-slate-50 dark:bg-slate-800/30 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800"
+          >
+            <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6">
+              Staff Responsable
+            </h4>
+            <div class="space-y-6">
+              @for (pmi of project.pmis; track pmi.id) {
+                <div class="flex items-center gap-4">
+                  <div
+                    class="size-11 rounded-2xl bg-primary text-white flex items-center justify-center font-black text-xs uppercase"
+                  >
+                    {{ pmi.nombreCompleto?.charAt(0) }}
+                  </div>
+                  <div>
+                    <p
+                      class="text-sm font-black text-slate-900 dark:text-slate-100 leading-none uppercase"
+                    >
+                      {{ pmi.nombreCompleto }}
+                    </p>
+                    <p class="text-[9px] text-primary font-black uppercase tracking-widest mt-1">
+                      {{ pmi.cargo || 'Responsable' }}
+                    </p>
+                  </div>
+                </div>
+              }
+              @for (worker of project.trabajadores; track worker.id) {
+                <div class="flex items-center gap-4">
+                  <div
+                    class="size-11 rounded-2xl bg-teal-500/10 text-teal-600 border border-teal-500/20 flex items-center justify-center font-black text-xs uppercase"
+                  >
+                    {{ worker.nombreCompleto?.charAt(0) }}
+                  </div>
+                  <div>
+                    <p
+                      class="text-sm font-black text-slate-900 dark:text-slate-100 leading-none uppercase"
+                    >
+                      {{ worker.nombreCompleto }}
+                    </p>
+                    <p class="text-[9px] text-teal-600 font-black uppercase tracking-widest mt-1">
+                      {{ worker.cargo || 'Equipo Técnico' }}
+                    </p>
+                  </div>
+                </div>
+              }
+            </div>
+          </section>
+
+          <section class="space-y-4">
+            <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-2">
+              Gestión de Presupuesto
+            </h4>
+            <div class="p-8 rounded-[2.5rem] bg-slate-900 text-white shadow-2xl shadow-primary/20">
+              <p
+                class="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest opacity-60"
+              >
+                Monto Consumido
+              </p>
+
+              <div class="flex flex-col gap-1">
+                <span class="text-4xl font-black tracking-tighter text-white">
+                  {{ formatCurrency(project.presupuestoConsumido) }}
+                </span>
+                <div class="flex items-center gap-2 mt-2 border-t border-white/10 pt-3">
+                  <span class="text-[10px] font-black text-slate-500 uppercase"
+                    >Total de obra:</span
+                  >
+                  <span class="text-xs font-bold text-slate-300">
+                    {{ formatCurrency(project.presupuestoTotal) }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="mt-6 h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                <div
+                  class="h-full bg-primary shadow-[0_0_10px_rgba(17,115,212,0.6)]"
+                  [style.width.%]="(project.presupuestoConsumido / project.presupuestoTotal) * 100"
+                ></div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <footer
+      class="px-10 py-8 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex justify-end shrink-0"
+    >
+      <button
+        (click)="close.emit()"
+        class="px-12 py-4 rounded-2xl bg-primary text-white text-[10px] font-black uppercase tracking-[0.2em] hover:bg-blue-700 transition-all active:scale-95 shadow-xl shadow-primary/20"
+      >
+        Entendido
+      </button>
+    </footer>
+  </div>
+</div>
