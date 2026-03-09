@@ -1,24 +1,23 @@
 version: "3.8"
 
 services:
-  # --- FRONTEND (NGINX) ---
+  # --- FRONTEND (NGINX + ANGULAR) ---
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile.prod
     container_name: vox-strategos-front-prod
     restart: always
-    # No exponemos el puerto 80 al host directamente por seguridad, 
-    # dejamos que ngrok o un proxy lo maneje.
     networks:
-      - vox-net
+      - vox-internal
+    # No exponemos puertos al host para que SOLO ngrok lo maneje
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
 
-  # --- DATABASE (POSTGRES) ---
+  # --- DATABASE (POSTGRESQL) ---
   db:
     image: postgres:15-alpine
     container_name: vox-strategos-db-prod
@@ -28,16 +27,20 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
     volumes:
-      - postgres_data_prod:/var/lib/postgresql/data
+      - postgres_prod_data:/var/lib/postgresql/data
     networks:
-      - vox-net
+      - vox-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     deploy:
       resources:
         limits:
-          cpus: '0.50'
           memory: 512M
 
-  # --- GESTIÓN (PGADMIN) ---
+  # --- PGADMIN (MANTENIMIENTO) ---
   pgadmin:
     image: dpage/pgadmin4
     container_name: vox-strategos-pgadmin-prod
@@ -47,12 +50,12 @@ services:
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
       PGADMIN_CONFIG_SERVER_MODE: "False"
     networks:
-      - vox-net
+      - vox-internal
     depends_on:
       db:
         condition: service_healthy
 
-  # --- EXPOSICIÓN (NGROK) ---
+  # --- NGROK (PROXIED ACCESS) ---
   ngrok:
     image: ngrok/ngrok:latest
     container_name: vox-strategos-ngrok-prod
@@ -63,14 +66,13 @@ services:
       - "http"
       - "frontend:80"
     networks:
-      - vox-net
+      - vox-internal
     depends_on:
       - frontend
 
 networks:
-  vox-net:
+  vox-internal:
     driver: bridge
 
 volumes:
-  postgres_data_prod:
-    external: false
+  postgres_prod_data:
