@@ -4,16 +4,19 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
-RUN npm run build -- --configuration production
+
+# CAMBIO AQUÍ: 
+# Si tu config de prod está en environment.ts, un build normal basta.
+# Si quieres optimización de prod pero usando ese archivo, dejamos el flag.
+RUN npm run build
 
 # Etapa 2: Servidor Web (Nginx)
 FROM nginx:stable-alpine
 
-# Copiamos la configuración de Nginx para que las rutas de Angular funcionen
+# Copiamos la configuración de Nginx (el puente que creamos)
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copiamos el contenido de 'browser' al directorio que Nginx sirve por defecto
-# Nota la ruta: /app/dist/FrontEnd/browser
+# Copiamos el contenido de 'browser' según tu captura de pantalla anterior
 COPY --from=build /app/dist/FrontEnd/browser /usr/share/nginx/html
 
 EXPOSE 80
