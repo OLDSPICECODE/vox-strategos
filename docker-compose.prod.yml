@@ -19,7 +19,7 @@ services:
   frontend:
     build:
       context: ./FrontEnd
-      dockerfile: Dockerfile
+      dockerfile: dockerfile
     container_name: vox-strategos-front-prod
     restart: always
     networks:
