@@ -4,13 +4,12 @@ services:
   # --- FRONTEND (NGINX + ANGULAR) ---
   frontend:
     build:
-      context: ./frontend
+      context: ./FrontEnd  # 👈 Corregido: Coincide con tu carpeta
       dockerfile: Dockerfile.prod
     container_name: vox-strategos-front-prod
     restart: always
     networks:
       - vox-internal
-    # No exponemos puertos al host para que SOLO ngrok lo maneje
     logging:
       driver: "json-file"
       options:
