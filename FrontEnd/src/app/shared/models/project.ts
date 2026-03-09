@@ -1,5 +1,15 @@
 import { Job } from './job';
 
+// 💸 Agregamos la interfaz de Pago/Movimiento para que TypeScript la reconozca
+export interface Pago {
+  id?: string;
+  monto: number;
+  descripcion: string;
+  tipo: 'ENTRADA' | 'SALIDA';
+  aceptado?: boolean;
+  fechaPago?: string | Date;
+}
+
 export interface Milestone {
   id?: string;
   nombre: string;
@@ -18,16 +28,18 @@ export interface Project {
   progreso: number;
   estado: string;
 
+  // 🚀 CAMPOS FINANCIEROS (Actualizados a la nueva BD)
+  presupuesto: number; // 👈 Esto soluciona tu error TS2339
+  movimientos?: Pago[]; // 👈 La nueva relación para calcular el gasto real
+
   // 🚀 CAMPOS DE CONTROL PMI
   objetivos: string[];
-  presupuestoTotal: number;
-  presupuestoConsumido: number;
   hitos: Milestone[];
 
   // RELACIONES
   trabajos: Job[];
-  trabajadores: any[];
-  pmis: any[];
+  trabajadores: any[]; // Idealmente, si tienes un modelo User, cámbialo a User[]
+  pmis: any[]; // Idealmente User[]
 
   /**
    * 📜 BITÁCORA ESPECÍFICA DEL PROYECTO

@@ -4,12 +4,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, In } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import {
   JobDependency,
   DependencyType,
 } from '../../auth/entities/job-dependency.entity';
-import { Job } from '../../auth/entities/job.entity';
+import { Job, JobStatus } from '../../auth/entities/job.entity';
 
 @Injectable()
 export class JobDependenciesService {
@@ -22,8 +22,121 @@ export class JobDependenciesService {
   ) {}
 
   /**
+   * 🛡️ NORMALIZADOR DE ESTADOS
+   * Convierte strings a JobStatus explícitamente para satisfacer a TS.
+   */
+  private normalizeStatus(status: any): JobStatus | undefined {
+    if (!status) return undefined;
+
+    const map: { [key: string]: JobStatus } = {
+      PENDIENTE: JobStatus.PENDING,
+      'POR HACER': JobStatus.TODO,
+      'EN PROCESO': JobStatus.IN_PROGRESS,
+      REVISIÓN: JobStatus.REVIEW,
+      COMPLETADO: JobStatus.DONE,
+      DONE: JobStatus.DONE,
+      pending: JobStatus.PENDING,
+      'To Do': JobStatus.TODO,
+      'In Progress': JobStatus.IN_PROGRESS,
+      Reviewing: JobStatus.REVIEW,
+      Done: JobStatus.DONE,
+    };
+
+    return (
+      map[status] ||
+      (Object.values(JobStatus).includes(status)
+        ? (status as JobStatus)
+        : undefined)
+    );
+  }
+
+  /**
+   * 📦 ACTUALIZACIÓN MASIVA (Batch Update)
+   * Corregido el error de tipado ts(2345).
+   */
+  async updateBatch(
+    updates: {
+      id: string;
+      fechaInicio?: Date;
+      fechaFin?: Date;
+      estado?: string;
+    }[],
+  ) {
+    return await this.dataSource.transaction(async (manager) => {
+      for (const update of updates) {
+        // Creamos un objeto de actualización con el tipo parcial de Job
+        // Usamos Record<string, any> para construirlo dinámicamente sin quejas de TS
+        const updateData: any = {
+          id: update.id,
+          inGantt: true,
+          updatedAt: new Date(),
+        };
+
+        if (update.fechaInicio) updateData.fechaInicio = update.fechaInicio;
+        if (update.fechaFin) updateData.fechaFin = update.fechaFin;
+
+        // Normalización con casting explícito a JobStatus
+        if (update.estado) {
+          updateData.estado = this.normalizeStatus(update.estado);
+        }
+
+        // Preload reconoce el objeto porque updateData tiene el 'id'
+        const jobToUpdate = await manager.preload(Job, updateData);
+
+        if (jobToUpdate) {
+          await manager.save(Job, jobToUpdate);
+        }
+      }
+
+      // Recálculo de cascada tras sincronizar todos los nodos
+      for (const update of updates) {
+        await this.rescheduleChain(update.id);
+      }
+
+      return { success: true, count: updates.length };
+    });
+  }
+
+  /**
+   * 🔄 RECÁLCULO EN CASCADA
+   */
+  async rescheduleChain(jobId: string): Promise<void> {
+    const job = await this.jobRepo.findOne({
+      where: { id: jobId },
+      relations: ['successor_relations', 'successor_relations.successor'],
+    });
+
+    if (!job || !job.fechaFin || !job.successor_relations?.length) return;
+
+    for (const dep of job.successor_relations) {
+      const successor = dep.successor;
+
+      if (!successor?.inGantt || !successor.fechaInicio || !successor.fechaFin)
+        continue;
+
+      let needsUpdate = false;
+      if (dep.type === DependencyType.FS) {
+        const minStartDate = new Date(job.fechaFin.getTime());
+        minStartDate.setDate(minStartDate.getDate() + (dep.lag_days || 0));
+
+        if (successor.fechaInicio < minStartDate) {
+          const duration =
+            successor.fechaFin.getTime() - successor.fechaInicio.getTime();
+          successor.fechaInicio = minStartDate;
+          successor.fechaFin = new Date(minStartDate.getTime() + duration);
+          needsUpdate = true;
+        }
+      }
+
+      if (needsUpdate) {
+        await this.jobRepo.save(successor);
+        await this.rescheduleChain(successor.id);
+      }
+    }
+  }
+
+  /**
    * 🕸️ CREAR DEPENDENCIA
-   * Valida existencia, previene ciclos e inconsistencias de fechas.
    */
   async createDependency(
     predecessorId: string,
@@ -44,19 +157,17 @@ export class JobDependenciesService {
     if (!pred || !succ)
       throw new NotFoundException('Uno de los trabajos no fue encontrado.');
 
-    // 1. Blindaje contra bucles infinitos
     const hasCycle = await this.detectCycle(predecessorId, successorId);
     if (hasCycle) {
       throw new BadRequestException(
-        'Relación inválida: Se detectó un bucle infinito en la cadena de tareas.',
+        'Relación inválida: Se detectó un bucle infinito.',
       );
     }
 
-    // 2. Validación de Fechas (Regla: El sucesor no puede empezar antes que el fin del predecesor)
     if (type === DependencyType.FS && succ.fechaInicio && pred.fechaFin) {
-      if (succ.fechaInicio < pred.fechaFin) {
+      if (new Date(succ.fechaInicio) < new Date(pred.fechaFin)) {
         throw new BadRequestException(
-          'Inconsistencia: La fecha de inicio del sucesor es anterior al fin del predecesor.',
+          'Inconsistencia: El sucesor inicia antes del fin del predecesor.',
         );
       }
     }
@@ -72,77 +183,9 @@ export class JobDependenciesService {
   }
 
   /**
-   * 🔄 RECÁLCULO EN CASCADA
-   * Si una tarea cambia, "empuja" cronológicamente a todos sus sucesores.
-   */
-  async rescheduleChain(jobId: string): Promise<void> {
-    const job = await this.jobRepo.findOne({
-      where: { id: jobId },
-      relations: ['successor_relations', 'successor_relations.successor'],
-    });
-
-    // Type Guard: Si no hay fechas o no hay sucesores, no hay nada que recalcular
-    if (!job || !job.fechaFin || !job.successor_relations?.length) return;
-
-    for (const dep of job.successor_relations) {
-      const successor = dep.successor;
-
-      // Solo procesamos si el sucesor está activo en el Gantt y tiene fechas válidas
-      if (!successor?.inGantt || !successor.fechaInicio || !successor.fechaFin)
-        continue;
-
-      let needsUpdate = false;
-      if (dep.type === DependencyType.FS) {
-        // Usamos una copia para no mutar la original accidentalmente
-        const minStartDate = new Date(job.fechaFin.getTime());
-        minStartDate.setDate(minStartDate.getDate() + (dep.lag_days || 0));
-
-        if (successor.fechaInicio < minStartDate) {
-          const duration =
-            successor.fechaFin.getTime() - successor.fechaInicio.getTime();
-          successor.fechaInicio = minStartDate;
-          successor.fechaFin = new Date(minStartDate.getTime() + duration);
-          needsUpdate = true;
-        }
-      }
-
-      if (needsUpdate) {
-        await this.jobRepo.save(successor);
-        await this.rescheduleChain(successor.id); // Cascada recursiva
-      }
-    }
-  }
-
-  /**
-   * 📦 ACTUALIZACIÓN MASIVA (Batch Update)
-   * Procesa múltiples cambios de fechas y dispara el recálculo.
-   */
-  async updateBatch(
-    updates: { id: string; fechaInicio: Date; fechaFin: Date }[],
-  ) {
-    return await this.dataSource.transaction(async (manager) => {
-      for (const update of updates) {
-        await manager.update(Job, update.id, {
-          fechaInicio: update.fechaInicio,
-          fechaFin: update.fechaFin,
-          inGantt: true,
-        });
-      }
-
-      // Una vez actualizados los nodos principales, recalculamos sus cadenas
-      for (const update of updates) {
-        await this.rescheduleChain(update.id);
-      }
-
-      return { success: true, count: updates.length };
-    });
-  }
-
-  /**
    * 🔍 DETECCIÓN DE CICLOS
    */
   private async detectCycle(predId: string, succId: string): Promise<boolean> {
-    // Buscamos si el 'successor' tiene sus propios sucesores que cierren el círculo
     const children = await this.dependencyRepo.find({
       where: { predecessor: { id: succId } },
       relations: ['successor'],
@@ -157,12 +200,9 @@ export class JobDependenciesService {
 
   /**
    * 🧹 SALIR DEL GANTT
-   * Desvincula la tarea y limpia sus relaciones para que vuelva a ser "suelta".
    */
   async removeFromGantt(jobId: string) {
     await this.jobRepo.update(jobId, { inGantt: false });
-
-    // Eliminamos dependencias donde participe esta tarea (como predecesor o sucesor)
     return await this.dependencyRepo.delete([
       { predecessor: { id: jobId } },
       { successor: { id: jobId } },

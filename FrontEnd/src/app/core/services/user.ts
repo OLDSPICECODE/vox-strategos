@@ -1,20 +1,27 @@
-// src/app/core/services/user.service.ts
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
-import { User } from '../../shared/models/user'; // Ajusta la ruta a tu modelo centralizado
-import { firstValueFrom } from 'rxjs';
+import { User } from '../../shared/models/user';
+import { firstValueFrom, Observable } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
 export class UserService {
   private http = inject(HttpClient);
 
   /**
-   * 🛠️ CORRECCIÓN DE RUTA (Singular):
-   * Se cambió de '/users' a '/user' para sincronizarse con el @Controller('user') de NestJS.
-   * Esto soluciona el error 404 Not Found.
+   * 🛠️ RUTA SINCRONIZADA:
+   * Apunta al @Controller('user') de NestJS.
    */
-  private apiUrl = `${environment.apiUrl}/user`; 
+  private apiUrl = `${environment.apiUrl}/user`;
+
+  /**
+   * 🚀 NUEVO MÉTODO: Obtener todos los usuarios.
+   * Este es el método que necesita el TaskGanttDetailComponent para
+   * llenar la lista de selección de personal.
+   */
+  findAll(): Observable<User[]> {
+    return this.http.get<User[]>(this.apiUrl);
+  }
 
   /**
    * Actualiza los datos de perfil (nombre, cargo, teléfono) en la base de datos.
@@ -34,5 +41,12 @@ export class UserService {
   updatePassword(id: string, passwords: any) {
     // El endpoint en el backend debe ser POST /user/{id}/change-password
     return firstValueFrom(this.http.post(`${this.apiUrl}/${id}/change-password`, passwords));
+  }
+
+  /**
+   * (Opcional) Obtener un usuario por ID
+   */
+  findOne(id: string): Observable<User> {
+    return this.http.get<User>(`${this.apiUrl}/${id}`);
   }
 }

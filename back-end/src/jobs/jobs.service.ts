@@ -25,45 +25,104 @@ export class JobsService {
   ) {}
 
   /**
-   * 📊 HISTORIAL GLOBAL (Dashboard PMI)
+   * 🛡️ NORMALIZADOR DE ESTADOS (Escudo Anti-Error 22P02 de Postgres)
    */
-  async getGlobalLogs(): Promise<JobLog[]> {
-    return await this.logRepository.find({
-      relations: ['job'],
-      order: { fecha: 'DESC' },
-      take: 20,
-    });
+  private normalizeStatus(estado: any): JobStatus | undefined {
+    if (!estado) return undefined;
+    const map: { [key: string]: JobStatus } = {
+      PENDIENTE: JobStatus.PENDING,
+      'POR HACER': JobStatus.TODO,
+      'EN PROCESO': JobStatus.IN_PROGRESS,
+      REVISIÓN: JobStatus.REVIEW,
+      COMPLETADO: JobStatus.DONE,
+      DONE: JobStatus.DONE,
+      pending: JobStatus.PENDING,
+      'To Do': JobStatus.TODO,
+      'In Progress': JobStatus.IN_PROGRESS,
+      Reviewing: JobStatus.REVIEW,
+      Done: JobStatus.DONE,
+    };
+    return (
+      map[estado] ||
+      (Object.values(JobStatus).includes(estado)
+        ? (estado as JobStatus)
+        : undefined)
+    );
   }
 
   /**
-   * 📜 HISTORIAL POR TAREA
+   * 🔄 ACTUALIZACIÓN GENERAL
+   * Soluciona el problema de Enums y mapeo de trabajadores.
    */
-  async getJobLogs(jobId: string): Promise<JobLog[]> {
-    return await this.logRepository.find({
-      where: { job: { id: jobId } },
-      order: { fecha: 'DESC' },
+  async update(id: string, data: any): Promise<Job> {
+    const job = await this.jobRepository.findOne({
+      where: { id },
+      relations: ['project', 'trabajadores'],
     });
-  }
 
-  /**
-   * 💾 GUARDAR ACTIVIDAD (Log)
-   */
-  async saveJobLog(jobId: string, logData: any): Promise<JobLog> {
-    try {
-      const newLog = this.logRepository.create({
-        usuario: logData.usuario,
-        accion: logData.accion,
-        descripcion: logData.descripcion,
-        comentario: logData.comentario || 'Sin observaciones.',
-        job: { id: jobId },
-        fecha: new Date(),
-      });
-      return await this.logRepository.save(newLog);
-    } catch (error) {
-      throw new InternalServerErrorException(
-        'Error al registrar en la bitácora.',
+    if (!job) throw new NotFoundException('Tarea técnica no encontrada.');
+
+    // 1. Normalización del Estado
+    if (data.estado) {
+      const normalized = this.normalizeStatus(data.estado);
+      if (normalized) job.estado = normalized;
+    }
+
+    // 2. Manejo de múltiples trabajadores
+    if (data.trabajadores && Array.isArray(data.trabajadores)) {
+      job.trabajadores = data.trabajadores.map(
+        (t: any) => ({ id: typeof t === 'string' ? t : t.id }) as any,
       );
     }
+
+    // 3. Limpieza de campos especiales para evitar conflictos en el merge
+    const { project, trabajadores, adjuntos, ...cleanData } = data;
+
+    if (cleanData.fechaInicio)
+      cleanData.fechaInicio = new Date(cleanData.fechaInicio);
+    if (cleanData.fechaFin) cleanData.fechaFin = new Date(cleanData.fechaFin);
+
+    // Fusionamos datos simples
+    this.jobRepository.merge(job, cleanData);
+
+    const updatedJob = await this.jobRepository.save(job);
+
+    // 4. Registro en Bitácora
+    await this.saveJobLog(id, {
+      usuario: data.usuarioUltimaMod || 'Sistema Vox',
+      accion: 'ACTUALIZACIÓN_GENERAL',
+      descripcion: `Se actualizaron datos técnicos de la tarea.`,
+    });
+
+    return updatedJob;
+  }
+
+  /**
+   * ⚡ CAMBIO DE ESTADO (Para botones rápidos)
+   */
+  async updateStatus(
+    id: string,
+    estado: string,
+    usuario: string,
+    comentario?: string,
+  ): Promise<Job> {
+    const job = await this.findOne(id);
+    const estadoAnterior = job.estado;
+
+    const nuevoEstado = this.normalizeStatus(estado);
+    if (!nuevoEstado)
+      throw new BadRequestException(`Estado "${estado}" inválido.`);
+
+    await this.jobRepository.update(id, { estado: nuevoEstado });
+
+    await this.saveJobLog(id, {
+      usuario,
+      accion: 'CAMBIO_ESTADO',
+      descripcion: `Cambio: ${estadoAnterior} -> ${nuevoEstado}`,
+      comentario,
+    });
+
+    return await this.findOne(id);
   }
 
   /**
@@ -75,15 +134,7 @@ export class JobsService {
       relations: ['trabajadores'],
     });
 
-    // 🛡️ Guardia contra null
-    if (!project)
-      throw new NotFoundException('El proyecto no existe en Sedapar.');
-
-    const isMember = project.trabajadores.some(
-      (w) => w.id === data.trabajadorId,
-    );
-    if (!isMember)
-      throw new BadRequestException('El trabajador no pertenece al proyecto.');
+    if (!project) throw new NotFoundException('El proyecto no existe.');
 
     const newJob = this.jobRepository.create({
       nombre: data.nombre,
@@ -101,143 +152,32 @@ export class JobsService {
   }
 
   /**
-   * 📅 BÚSQUEDA POR RANGO (Calendario/Gantt)
+   * 📅 BÚSQUEDAS (Gantt y Proyectos)
    */
-  async findByDateRange(
-    userId: string,
-    startDate: string,
-    endDate: string,
-  ): Promise<Job[]> {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-
-    return await this.jobRepository
-      .createQueryBuilder('job')
-      .leftJoinAndSelect('job.project', 'project')
-      .leftJoinAndSelect('job.trabajadores', 'trabajador')
-      .where('trabajador.id = :userId', { userId })
-      .andWhere(
-        'job.fechaInicio <= :endRange AND job.fechaFin >= :startRange',
-        { startRange: start, endRange: end },
-      )
-      .orderBy('job.fechaInicio', 'ASC')
-      .getMany();
-  }
-
-  /**
-   * 🔄 ACTUALIZACIÓN GENERAL
-   */
-  async update(id: string, data: any): Promise<Job> {
-    const job = await this.findOne(id);
-
-    // Si se intenta reasignar, validamos existencia de project y trabajador
-    if (data.trabajadorId && job.project) {
-      const project = await this.projectRepository.findOne({
-        where: { id: job.project.id },
-        relations: ['trabajadores'],
-      });
-
-      if (!project)
-        throw new NotFoundException('Proyecto vinculado no encontrado.');
-
-      const isMember = project.trabajadores.some(
-        (w) => w.id === data.trabajadorId,
-      );
-      if (!isMember)
-        throw new BadRequestException(
-          'El nuevo trabajador no pertenece al equipo.',
-        );
-
-      job.trabajadores = [{ id: data.trabajadorId } as any];
-    }
-
-    const { project, trabajadores, adjuntos, ...cleanData } = data;
-    this.jobRepository.merge(job, cleanData);
-    return await this.jobRepository.save(job);
-  }
-
-  /**
-   * ⚡ CAMBIO DE ESTADO
-   */
-  async updateStatus(
-    id: string,
-    estado: string,
-    usuario: string,
-    comentario?: string,
-  ): Promise<Job> {
-    const job = await this.findOne(id);
-    const estadoAnterior = job.estado;
-
-    await this.jobRepository.update(id, { estado: estado as JobStatus });
-
-    await this.saveJobLog(id, {
-      usuario,
-      accion: 'CAMBIO_ESTADO',
-      descripcion: `Cambió estado de "${estadoAnterior}" a "${estado}"`,
-      comentario,
+  async findByProject(projectId: string): Promise<Job[]> {
+    return await this.jobRepository.find({
+      where: { project: { id: projectId } },
+      order: { fechaInicio: 'ASC' },
+      relations: ['trabajadores'],
     });
-
-    return await this.findOne(id);
   }
 
-  /**
-   * 🔍 BUSCAR POR ID
-   */
   async findOne(id: string): Promise<Job> {
     const job = await this.jobRepository.findOne({
       where: { id },
       relations: ['project', 'trabajadores'],
     });
-    if (!job) throw new NotFoundException('Tarea técnica no encontrada.');
+    if (!job) throw new NotFoundException('Tarea no encontrada.');
     return job;
   }
 
-  /**
-   * 📂 GESTIÓN DE RECURSOS Y ADJUNTOS
-   */
-  async addAttachment(
-    jobId: string,
-    attachment: any,
-    usuario: string,
-  ): Promise<Job> {
-    const job = await this.jobRepository.findOne({
-      where: { id: jobId },
-      relations: ['project'],
+  async findAll(): Promise<Job[]> {
+    return await this.jobRepository.find({
+      relations: ['project', 'trabajadores'],
+      order: { nombre: 'ASC' },
     });
-
-    // 🛡️ Guardia contra null para 'job' y 'project'
-    if (!job || !job.project) {
-      throw new NotFoundException(
-        'No se pudo encontrar la tarea o el proyecto asociado.',
-      );
-    }
-
-    const nuevoRecurso = this.resourceRepository.create({
-      nombre: attachment.nombre,
-      url: attachment.url,
-      project: { id: job.project.id },
-      job: { id: job.id },
-    });
-    await this.resourceRepository.save(nuevoRecurso);
-
-    job.adjuntos = [
-      ...(job.adjuntos || []),
-      { ...attachment, id: Date.now().toString() },
-    ];
-
-    await this.saveJobLog(jobId, {
-      usuario,
-      accion: 'SUBIDA_ARCHIVO',
-      descripcion: `Subió el archivo técnico: ${attachment.nombre}`,
-    });
-
-    return await this.jobRepository.save(job);
   }
 
-  /**
-   * 🔍 BUSCAR TAREAS POR USUARIO
-   * Lista todas las tareas asignadas a un trabajador específico.
-   */
   async findByUser(userId: string): Promise<Job[]> {
     return await this.jobRepository
       .createQueryBuilder('job')
@@ -248,10 +188,101 @@ export class JobsService {
       .getMany();
   }
 
-  async findByProject(projectId: string) {
-    return await this.jobRepository.find({
-      where: { project: { id: projectId } },
-      order: { fechaInicio: 'ASC' },
+  async findByDateRange(
+    userId: string,
+    start: string,
+    end: string,
+  ): Promise<Job[]> {
+    return await this.jobRepository
+      .createQueryBuilder('job')
+      .leftJoinAndSelect('job.project', 'project')
+      .leftJoinAndSelect('job.trabajadores', 'trabajador')
+      .where('trabajador.id = :userId', { userId })
+      .andWhere(
+        'job.fechaInicio <= :endRange AND job.fechaFin >= :startRange',
+        {
+          startRange: new Date(start),
+          endRange: new Date(end),
+        },
+      )
+      .orderBy('job.fechaInicio', 'ASC')
+      .getMany();
+  }
+
+  /**
+   * 📜 GESTIÓN DE BITÁCORA (LOGS)
+   * Corregido el error ts(2740) asegurando que devuelve JobLog individual.
+   */
+  async saveJobLog(
+    jobId: string,
+    logData: {
+      usuario: string;
+      accion: string;
+      descripcion: string;
+      comentario?: string;
+    },
+  ): Promise<JobLog> {
+    try {
+      const newLog = this.logRepository.create({
+        usuario: logData.usuario,
+        accion: logData.accion,
+        descripcion: logData.descripcion,
+        comentario: logData.comentario || 'Sin observaciones.',
+        job: { id: jobId } as any, // Cast para evitar conflictos de relación profunda
+        fecha: new Date(),
+      });
+      return await this.logRepository.save(newLog);
+    } catch (error) {
+      throw new InternalServerErrorException('Error al guardar log.');
+    }
+  }
+
+  async getJobLogs(jobId: string): Promise<JobLog[]> {
+    return await this.logRepository.find({
+      where: { job: { id: jobId } },
+      order: { fecha: 'DESC' },
     });
+  }
+
+  async getGlobalLogs(): Promise<JobLog[]> {
+    return await this.logRepository.find({
+      relations: ['job'],
+      order: { fecha: 'DESC' },
+      take: 20,
+    });
+  }
+
+  /**
+   * 📂 ADJUNTOS
+   */
+  async addAttachment(
+    jobId: string,
+    attachment: any,
+    usuario: string,
+  ): Promise<Job> {
+    const job = await this.findOne(jobId);
+
+    // Guardar en tabla Resource
+    const nuevoRecurso = this.resourceRepository.create({
+      nombre: attachment.nombre,
+      url: attachment.url,
+      project: { id: job.project.id } as any,
+      job: { id: job.id } as any,
+    });
+    await this.resourceRepository.save(nuevoRecurso);
+
+    // Actualizar JSON en tabla Job
+    job.adjuntos = [
+      ...(job.adjuntos || []),
+      { ...attachment, id: Date.now().toString() },
+    ];
+
+    await this.saveJobLog(jobId, {
+      usuario,
+      accion: 'SUBIDA_ARCHIVO',
+      descripcion: `Archivo subido: ${attachment.nombre}`,
+    });
+
+    return await this.jobRepository.save(job);
   }
 }

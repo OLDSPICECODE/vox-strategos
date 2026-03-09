@@ -11,6 +11,7 @@ import { Project } from './entities/project.entity';
 import { Job, JobPriority, JobStatus } from './entities/job.entity';
 import { Resource } from './entities/resource.entity';
 import { JobLog } from './entities/job-log.entity';
+import { Pago } from './entities/movimientos.entity';
 import {
   JobDependency,
   DependencyType,
@@ -85,7 +86,7 @@ export class AuthService implements OnModuleInit {
    */
   private async ejecutarSiembra() {
     this.logger.log(
-      '🌱 Iniciando siembra técnica avanzada para VOX STRATEGOS...',
+      '🌱 Iniciando siembra técnica avanzada para VOX STRATEGOS (Dashboard Ready)...',
     );
 
     const queryRunner = this.dataSource.createQueryRunner();
@@ -111,7 +112,9 @@ export class AuthService implements OnModuleInit {
         await queryRunner.query(`DELETE FROM "${table}"`);
       }
 
+      // ==========================================
       // 1. POBLACIÓN DE USUARIOS
+      // ==========================================
       const salt = await bcrypt.genSalt(10);
       const passHash = await bcrypt.hash('123', salt);
 
@@ -138,122 +141,238 @@ export class AuthService implements OnModuleInit {
           role: UserRole.TRABAJADOR,
           cargo: 'Especialista Suelos',
         },
+        {
+          nombreCompleto: 'Carlos Ruiz',
+          email: 'carlos@vox.com',
+          password: passHash,
+          role: UserRole.TRABAJADOR,
+          cargo: 'Técnico de Campo',
+        },
       ]);
 
-      // 2. DEFINICIÓN DE LÍNEA TEMPORAL (Anclada a 2026 para evitar timeline erróneo)
+      // ==========================================
+      // 2. LÍNEA TEMPORAL (Anclada a 2026)
+      // ==========================================
+      const pasado = new Date('2026-02-15T08:00:00');
       const hoy = new Date('2026-03-01T08:00:00');
-      const d1 = new Date('2026-03-03T08:00:00');
-      const d2 = new Date('2026-03-05T08:00:00');
-      const d3 = new Date('2026-03-07T08:00:00');
-      const d4 = new Date('2026-03-10T08:00:00');
+      const futuroCorto = new Date('2026-03-15T08:00:00');
+      const futuroLargo = new Date('2026-05-30T08:00:00');
 
-      // 3. PROYECTO PRINCIPAL
+      // ==========================================
+      // 3. PROYECTO 1: RESERVORIO R-10 (Saludable)
+      // ==========================================
       const p1 = await queryRunner.manager.save(Project, {
         nombre: 'Construcción de Reservorio R-10 - Sedapar',
-        idCodigo: 'SED-2026-GANTT',
-        presupuestoTotal: 850000,
+        idCodigo: 'SED-2026-R10',
+        descripcion:
+          'Construcción de reservorio de cabecera para mejorar el abastecimiento en la zona sur.',
+        presupuesto: 850000,
+        progreso: 45,
+        estado: 'EN CURSO',
+        objetivos: [
+          'Aumentar capacidad de reserva en 500m3',
+          'Mejorar presión de agua en 3 distritos',
+        ],
+        hitos: [
+          {
+            nombre: 'Firma de Contrato',
+            fecha: pasado.toISOString(),
+            estado: 'COMPLETO',
+            descripcion: 'Inicio legal',
+          },
+          {
+            nombre: 'Vaciado de Losa',
+            fecha: hoy.toISOString(),
+            estado: 'EN_PROCESO',
+            descripcion: 'Fase estructural',
+          },
+          {
+            nombre: 'Pruebas Hidráulicas',
+            fecha: futuroLargo.toISOString(),
+            estado: 'PENDIENTE',
+            descripcion: 'Pruebas finales',
+          },
+        ],
         pmis: [pmiManager],
-        trabajadores: staff,
-        fechaInicio: hoy,
-        fechaFin: d4,
+        trabajadores: [staff[0], staff[1]],
+        fechaInicio: pasado,
+        fechaFin: futuroLargo,
       });
 
-      // 4. CREACIÓN DE TRABAJOS (Diseñados para probar la red de trabajo)
-      const savedJobs = await queryRunner.manager.save(Job, [
+      // 💰 Movimientos del P1
+      await queryRunner.manager.save(Pago, [
         {
-          nombre: 'Excavación de Base', // Predecesor de todos
+          monto: 150000,
+          descripcion: 'Compra de Cemento y Acero',
+          tipo: 'SALIDA',
+          aceptado: true,
+          project: p1,
+        },
+        {
+          monto: 50000,
+          descripcion: 'Pago Planilla Febrero',
+          tipo: 'SALIDA',
+          aceptado: true,
+          project: p1,
+        },
+        {
+          monto: 30000,
+          descripcion: 'Alquiler Maquinaria Pesada',
+          tipo: 'SALIDA',
+          aceptado: false,
+          project: p1,
+        },
+      ]);
+
+      // 🛠️ Trabajos P1
+      const p1Jobs = await queryRunner.manager.save(Job, [
+        {
+          nombre: 'Excavación de Base',
           estado: JobStatus.DONE,
           project: p1,
           inGantt: true,
           prioridad: JobPriority.HIGH,
           trabajadores: [staff[0]],
-          fechaInicio: hoy,
-          fechaFin: d1,
+          fechaInicio: pasado,
+          fechaFin: hoy,
         },
         {
-          nombre: 'Vaciado de Concreto', // FS: Espera a que termine la excavación
+          nombre: 'Vaciado de Concreto',
           estado: JobStatus.IN_PROGRESS,
           project: p1,
           inGantt: true,
           prioridad: JobPriority.URGENT,
           trabajadores: [staff[1]],
-          fechaInicio: d1,
-          fechaFin: d2,
-        },
-        {
-          nombre: 'Supervisión Técnica', // SS: Inicia junto con el vaciado
-          estado: JobStatus.IN_PROGRESS,
-          project: p1,
-          inGantt: true,
-          prioridad: JobPriority.MEDIUM,
-          trabajadores: [staff[0]],
-          fechaInicio: d1,
-          fechaFin: d3,
-        },
-        {
-          nombre: 'Pruebas de Resistencia', // FF: No termina hasta que la supervisión termine
-          estado: JobStatus.PENDING,
-          project: p1,
-          inGantt: true,
-          prioridad: JobPriority.LOW,
-          trabajadores: [staff[1]],
-          fechaInicio: d2,
-          fechaFin: d3,
-        },
-        {
-          nombre: 'Cierre de Fase 1', // SF: Su fin depende del inicio de otra tarea
-          estado: JobStatus.PENDING,
-          project: p1,
-          inGantt: true,
-          prioridad: JobPriority.MEDIUM,
-          trabajadores: [staff[0]],
-          fechaInicio: d3,
-          fechaFin: d4,
+          fechaInicio: hoy,
+          fechaFin: futuroCorto,
         },
       ]);
 
-      // 5. MAPEO DE TODOS LOS TIPOS DE DEPENDENCIAS
-      await queryRunner.manager.save(JobDependency, [
+      // 📂 Archivos P1 (Con propiedad URL ficticia para pasar el Not-Null de la BD)
+      await queryRunner.manager.save(Resource, [
         {
-          predecessor: savedJobs[0], // Excavación
-          successor: savedJobs[1], // Vaciado
-          type: DependencyType.FS, // Finish-to-Start
-          lag_days: 0,
+          nombre: 'Planos_Excavacion.pdf',
+          tipo: 'file',
+          size: 2500000,
+          url: '/uploads/planos.pdf',
+          job: p1Jobs[0],
+          project: p1,
         },
         {
-          predecessor: savedJobs[1], // Vaciado
-          successor: savedJobs[2], // Supervisión
-          type: DependencyType.SS, // Start-to-Start
-          lag_days: 0,
+          nombre: 'Permiso_Municipal.docx',
+          tipo: 'file',
+          size: 500000,
+          url: '/uploads/permiso.docx',
+          job: p1Jobs[0],
+          project: p1,
         },
         {
-          predecessor: savedJobs[2], // Supervisión
-          successor: savedJobs[3], // Pruebas
-          type: DependencyType.FF, // Finish-to-Finish
-          lag_days: 0,
-        },
-        {
-          predecessor: savedJobs[3], // Pruebas
-          successor: savedJobs[4], // Cierre
-          type: DependencyType.SF, // Start-to-Finish
-          lag_days: 1,
+          nombre: 'Carpeta Drive Proveedores',
+          tipo: 'link',
+          url: 'https://drive.google.com/drive/folders/ejemplo',
+          job: p1Jobs[1],
+          project: p1,
         },
       ]);
 
-      // 6. TAREA EN EL BACKLOG (Para probar "La Nuez" del sidebar)
-      await queryRunner.manager.save(Job, {
-        nombre: 'Revisión Documentaria Administrativa',
-        estado: JobStatus.TODO,
-        project: p1,
-        inGantt: false, // 👈 Importante: aparecerá en la lista lateral
-        prioridad: JobPriority.LOW,
-        trabajadores: [staff[1]],
-        fechaInicio: null,
-        fechaFin: null,
+      // ==========================================
+      // 4. PROYECTO 2: RENOVACIÓN DE TUBERÍAS (Atrasado)
+      // ==========================================
+      const p2 = await queryRunner.manager.save(Project, {
+        nombre: 'Mantenimiento Red Matriz Centro',
+        idCodigo: 'SED-2026-MNT',
+        descripcion:
+          'Reparación de urgencia por fatiga de material en la tubería principal del centro histórico.',
+        presupuesto: 120000,
+        progreso: 85,
+        estado: 'CRÍTICO',
+        objetivos: [
+          'Sellar 5 puntos de fuga documentados',
+          'Reemplazo de válvulas de 10 pulgadas',
+        ],
+        hitos: [
+          {
+            nombre: 'Cierre de vías',
+            fecha: pasado.toISOString(),
+            estado: 'COMPLETO',
+            descripcion: 'Tránsito desviado',
+          },
+          {
+            nombre: 'Apertura de zanjas',
+            fecha: pasado.toISOString(),
+            estado: 'COMPLETO',
+            descripcion: 'Excavación lista',
+          },
+        ],
+        pmis: [pmiManager],
+        trabajadores: [staff[2], staff[0]],
+        fechaInicio: pasado,
+        fechaFin: futuroCorto,
       });
 
+      // 💰 Movimientos del P2
+      await queryRunner.manager.save(Pago, [
+        {
+          monto: 110000,
+          descripcion: 'Compra de válvulas importadas',
+          tipo: 'SALIDA',
+          aceptado: true,
+          project: p2,
+        },
+      ]);
+
+      // 🛠️ Trabajos P2
+      const p2Jobs = await queryRunner.manager.save(Job, [
+        {
+          nombre: 'Corte de Asfalto',
+          estado: JobStatus.DONE,
+          project: p2,
+          inGantt: true,
+          prioridad: JobPriority.MEDIUM,
+          trabajadores: [staff[2]],
+          fechaInicio: pasado,
+          fechaFin: new Date('2026-02-20T08:00:00'),
+        },
+        {
+          nombre: 'Instalación de Válvulas',
+          estado: JobStatus.IN_PROGRESS,
+          project: p2,
+          inGantt: true,
+          prioridad: JobPriority.HIGH,
+          trabajadores: [staff[0]],
+          fechaInicio: new Date('2026-02-21T08:00:00'),
+          fechaFin: new Date('2026-02-28T08:00:00'), // Tarea intencionalmente vencida
+        },
+      ]);
+
+      // 📂 Archivos P2 (URL ficticia añadida)
+      await queryRunner.manager.save(Resource, [
+        {
+          nombre: 'Reporte_Asfalto.xlsx',
+          tipo: 'file',
+          size: 1200000,
+          url: '/uploads/reporte_asfalto.xlsx',
+          job: p2Jobs[0],
+          project: p2,
+        },
+      ]);
+
+      // ==========================================
+      // 5. MAPEO DE DEPENDENCIAS
+      // ==========================================
+      await queryRunner.manager.save(JobDependency, [
+        {
+          predecessor: p1Jobs[0],
+          successor: p1Jobs[1],
+          type: DependencyType.FS,
+          lag_days: 0,
+        },
+      ]);
+
       await queryRunner.commitTransaction();
-      this.logger.log('✅ Siembra GANTT Multi-Workload completada con éxito.');
+      this.logger.log(
+        '✅ Siembra Multi-Workload y Financiera completada con éxito.',
+      );
     } catch (error) {
       await queryRunner.rollbackTransaction();
       this.logger.error(`❌ Error en la siembra: ${error.message}`);

@@ -1,0 +1,76 @@
+version: "3.8"
+
+services:
+  # --- FRONTEND (NGINX) ---
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    container_name: vox-strategos-front-prod
+    restart: always
+    # No exponemos el puerto 80 al host directamente por seguridad, 
+    # dejamos que ngrok o un proxy lo maneje.
+    networks:
+      - vox-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # --- DATABASE (POSTGRES) ---
+  db:
+    image: postgres:15-alpine
+    container_name: vox-strategos-db-prod
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+    networks:
+      - vox-net
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+
+  # --- GESTIÓN (PGADMIN) ---
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: vox-strategos-pgadmin-prod
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    networks:
+      - vox-net
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # --- EXPOSICIÓN (NGROK) ---
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: vox-strategos-ngrok-prod
+    restart: always
+    environment:
+      - NGROK_AUTHTOKEN=3AB4V7tE79QzgXfE4dppz7ax4W4_7ypQZhcLTqxzixU9HWAwA
+    command:
+      - "http"
+      - "frontend:80"
+    networks:
+      - vox-net
+    depends_on:
+      - frontend
+
+networks:
+  vox-net:
+    driver: bridge
+
+volumes:
+  postgres_data_prod:
+    external: false

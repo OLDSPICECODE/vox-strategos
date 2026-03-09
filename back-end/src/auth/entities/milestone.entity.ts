@@ -1,25 +1,29 @@
-// src/jobs/entities/milestone.entity.ts
+// src/jobs/entities/milestone.entity.ts (Ajusta la ruta si es necesario)
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn } from 'typeorm';
 import { Project } from './project.entity';
 
 @Entity('milestones')
 export class Milestone {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid') // 👈 Cambiado a UUID para que coincida con Angular
+  id: string;
 
   @Column()
-  nombre: string; // Ej: "Instalación de tuberías primaria 25%"
+  nombre: string;
 
   @Column({ type: 'date' })
-  fechaEntrega: Date;
+  fecha: string; // 👈 Cambiado de fechaEntrega a fecha
 
-  @Column({ default: false })
-  completado: boolean;
+  @Column({ default: 'PENDIENTE' })
+  estado: string; // 👈 Cambiado de completado (boolean) a estado (string)
+
+  @Column({ type: 'text', nullable: true })
+  descripcion: string;
 
   @Column({ type: 'decimal', precision: 5, scale: 2, default: 0 })
-  porcentajeImpacto: number; // Cuanto suma al progreso total del proyecto
+  porcentajeImpacto: number;
 
-  @ManyToOne(() => Project, (project) => project.id, { onDelete: 'CASCADE' })
+  // 👈 Relación conectada a la propiedad 'hitos' del proyecto
+  @ManyToOne(() => Project, (project) => project.hitos, { onDelete: 'CASCADE' })
   project: Project;
 
   @CreateDateColumn()

@@ -1,0 +1,15 @@
+# Etapa 1: Construcción
+FROM node:20-alpine AS build
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build -- --configuration production
+
+# Etapa 2: Servidor de Producción (Nginx)
+FROM nginx:stable-alpine
+# Copia los archivos compilados desde la etapa de construcción
+# NOTA: Ajusta 'nombre-de-tu-app' al nombre que sale en tu carpeta /dist
+COPY --from=build /app/dist/nombre-de-tu-app /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

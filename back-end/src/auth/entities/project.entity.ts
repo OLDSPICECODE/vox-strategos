@@ -12,7 +12,8 @@ import {
 import { User } from './user.entity';
 import { Job } from './job.entity';
 import { Resource } from './resource.entity';
-import { Pago } from './movimientos.entity'; // 🚀 Importamos como Pago/Movimiento
+import { Pago } from './movimientos.entity';
+import { Milestone } from './milestone.entity';
 
 @Entity('projects')
 export class Project {
@@ -23,7 +24,7 @@ export class Project {
   nombre: string;
 
   @Column({ nullable: true })
-  idCodigo: string; 
+  idCodigo: string;
 
   @Column({ type: 'text', nullable: true })
   descripcion: string;
@@ -49,13 +50,11 @@ export class Project {
   @Column({ type: 'simple-json', nullable: true })
   objetivos: string[];
 
-  @Column({ type: 'simple-json', nullable: true })
-  hitos: {
-    nombre: string;
-    fecha: string;
-    estado: string;
-    descripcion: string;
-  }[];
+  @OneToMany(() => Milestone, (milestone) => milestone.project, {
+    cascade: true,
+    eager: true,
+  })
+  hitos: Milestone[];
 
   // --- RELACIONES OPERATIVAS ---
   @OneToMany(() => Job, (job) => job.project, { cascade: true })
@@ -87,8 +86,8 @@ export class Project {
     this.presupuestoConsumido = 0;
     if (this.movimientos && this.movimientos.length > 0) {
       this.presupuestoConsumido = this.movimientos.reduce(
-        (total, pago) => total + Number(pago.monto), 
-        0
+        (total, pago) => total + Number(pago.monto),
+        0,
       );
     }
 

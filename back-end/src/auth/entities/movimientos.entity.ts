@@ -1,58 +1,39 @@
-import { 
-  Entity, 
-  PrimaryGeneratedColumn, 
-  Column, 
-  ManyToOne, 
-  CreateDateColumn 
+// pago.entity.ts (Backend NestJS)
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  CreateDateColumn,
 } from 'typeorm';
 import { Project } from './project.entity';
 
-/**
- * 💸 ENTIDAD DE MOVIMIENTOS ECONÓMICOS
- * Representa cada registro individual (estilo Excel) de los gastos o ingresos
- * de los proyectos de Sedapar.
- */
 @Entity('pagos')
 export class Pago {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ 
-    type: 'decimal', 
-    precision: 12, 
-    scale: 2,
-    comment: 'Monto de la transacción' 
-  })
+  @Column({ type: 'decimal', precision: 12, scale: 2 })
   monto: number;
 
-  @Column({ 
-    type: 'varchar', 
-    length: 255,
-    comment: 'Descripción del movimiento (ej: Pago de planilla, Compra de válvulas)' 
-  })
+  @Column({ type: 'varchar', length: 255 })
   descripcion: string;
 
-  @Column({ 
-    type: 'enum', 
-    enum: ['SALIDA', 'ENTRADA'], 
-    default: 'SALIDA',
-    comment: 'Categorización del flujo de caja'
-  })
+  @Column({ type: 'enum', enum: ['SALIDA', 'ENTRADA'], default: 'SALIDA' })
   tipo: string;
 
-  @CreateDateColumn({ 
-    name: 'fecha_pago',
-    comment: 'Fecha automática de registro del movimiento' 
+  @Column({
+    type: 'boolean',
+    default: false,
+    comment: 'Indica si el movimiento ya fue aprobado/ejecutado por tesorería',
   })
+  aceptado: boolean;
+
+  @CreateDateColumn({ name: 'fecha_pago' })
   fechaPago: Date;
 
-  /**
-   * ⚓ EL ANCLA:
-   * Relación ManyToOne con Project. 
-   * Muchos pagos pertenecen a un solo Proyecto.
-   */
-  @ManyToOne(() => Project, (project) => project.movimientos, { 
-    onDelete: 'CASCADE' 
+  @ManyToOne(() => Project, (project) => project.movimientos, {
+    onDelete: 'CASCADE',
   })
   project: Project;
 }

@@ -8,6 +8,7 @@ import { Repository, DataSource } from 'typeorm';
 import { Project } from '../auth/entities/project.entity';
 import { User } from '../auth/entities/user.entity';
 import { Resource } from '../auth/entities/resource.entity';
+import { Milestone } from '../auth/entities/milestone.entity'; // 👈 IMPORTACIÓN CLAVE
 
 import * as fs from 'fs';
 import * as path from 'path';
@@ -21,6 +22,8 @@ export class PmiService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(Resource)
     private readonly resourceRepository: Repository<Resource>,
+    @InjectRepository(Milestone) // 👈 INYECCIÓN DEL REPOSITORIO DE HITOS
+    private readonly milestoneRepository: Repository<Milestone>,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -40,7 +43,7 @@ export class PmiService {
 
   async findAllProjects(): Promise<Project[]> {
     return await this.projectRepository.find({
-      relations: ['trabajadores', 'pmis'],
+      relations: ['trabajadores', 'pmis', 'hitos'], // 👈 Aseguramos traer los hitos siempre
       order: { createdAt: 'DESC' },
     });
   }
@@ -48,7 +51,7 @@ export class PmiService {
   async findProjectById(id: string): Promise<Project> {
     const project = await this.projectRepository.findOne({
       where: { id },
-      relations: ['trabajadores', 'pmis', 'trabajos', 'trabajos.logs'],
+      relations: ['trabajadores', 'pmis', 'trabajos', 'trabajos.logs', 'hitos'], // 👈 Y aquí también
     });
     if (!project) throw new NotFoundException('Proyecto inexistente.');
     return project;
@@ -57,6 +60,63 @@ export class PmiService {
   async updateProject(id: string, data: Partial<Project>): Promise<Project> {
     await this.projectRepository.update(id, data);
     return this.findProjectById(id);
+  }
+
+  // ==========================================
+  // 📌 GESTIÓN DE HITOS ESTRATÉGICOS (CRUD)
+  // ==========================================
+
+  async createMilestone(
+    projectId: string,
+    data: {
+      nombre: string;
+      fecha: string;
+      estado: string;
+      descripcion?: string;
+    },
+  ) {
+    const project = await this.findProjectById(projectId);
+
+    const newMilestone = this.milestoneRepository.create({
+      nombre: data.nombre,
+      fecha: data.fecha,
+      estado: data.estado,
+      descripcion: data.descripcion,
+      project: project,
+    });
+
+    return await this.milestoneRepository.save(newMilestone);
+  }
+
+  async updateMilestone(projectId: string, milestoneId: string, data: any) {
+    // Verificamos que el hito exista y pertenezca al proyecto correcto
+    const milestone = await this.milestoneRepository.findOne({
+      where: { id: milestoneId, project: { id: projectId } },
+    });
+
+    if (!milestone)
+      throw new NotFoundException(
+        'Hito no encontrado o no pertenece a este proyecto.',
+      );
+
+    await this.milestoneRepository.update(milestoneId, data);
+    return await this.milestoneRepository.findOne({
+      where: { id: milestoneId },
+    });
+  }
+
+  async deleteMilestone(projectId: string, milestoneId: string) {
+    const milestone = await this.milestoneRepository.findOne({
+      where: { id: milestoneId, project: { id: projectId } },
+    });
+
+    if (!milestone)
+      throw new NotFoundException(
+        'Hito no encontrado o no pertenece a este proyecto.',
+      );
+
+    await this.milestoneRepository.delete(milestoneId);
+    return { success: true, message: 'Hito eliminado correctamente.' };
   }
 
   /**
@@ -108,7 +168,7 @@ export class PmiService {
   }
 
   /**
-   * 👥 GESTIÓN DE PERSONAL (Corregido TS2554)
+   * 👥 GESTIÓN DE PERSONAL
    */
   async assignStaffToProject(projectId: string, staffData: any, role: string) {
     await this.findProjectById(projectId);
@@ -179,7 +239,7 @@ export class PmiService {
   }
 
   /**
-   * 📜 ACTIVIDAD E HITOS
+   * 📜 ACTIVIDAD
    */
   async getRecentActivity(projectId: string) {
     const project = await this.projectRepository.findOne({
@@ -204,11 +264,6 @@ export class PmiService {
     return allLogs
       .sort((a, b) => b.fecha.getTime() - a.fecha.getTime())
       .slice(0, 10);
-  }
-
-  async addMilestoneToProject(projectId: string, milestone: any) {
-    await this.findProjectById(projectId);
-    return { ...milestone, status: 'PLANIFICADO' };
   }
 
   async getDetailedBudgetReport() {

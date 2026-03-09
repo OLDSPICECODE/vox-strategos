@@ -17,7 +17,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { JobsService } from './jobs.service';
-import { JobDependenciesService } from './job_dependencies/job-dependencies.service'; // Ajusta la ruta
+import { JobDependenciesService } from './job_dependencies/job-dependencies.service';
 import { DependencyType } from '../auth/entities/job-dependency.entity';
 
 @Controller('jobs')
@@ -28,8 +28,37 @@ export class JobsController {
   ) {}
 
   /**
-   * 🕸️ CREAR DEPENDENCIA ENTRE TAREAS
-   * Conecta dos trabajos para el Diagrama de Gantt
+   * 📦 ACTUALIZACIÓN MASIVA (Batch Update para Gantt)
+   * IMPORTANTE: Debe ir ANTES de @Patch(':id') para evitar conflictos de rutas.
+   */
+  @Patch('batch')
+  @HttpCode(HttpStatus.OK)
+  async updateBatch(@Body() body: { updates: any[] }) {
+    return await this.dependencyService.updateBatch(body.updates);
+  }
+
+  /**
+   * 🚀 OBTENER TODOS LOS TRABAJOS
+   */
+  @Get()
+  async findAll() {
+    return await this.jobsService.findAll();
+  }
+
+  /**
+   * 📊 DATOS COMPLETOS PARA DIAGRAMA DE GANTT
+   */
+  @Get('project/:projectId/gantt')
+  async getGanttData(@Param('projectId', ParseUUIDPipe) projectId: string) {
+    const [jobs, dependencies] = await Promise.all([
+      this.jobsService.findByProject(projectId),
+      this.dependencyService.getDependenciesByProject(projectId),
+    ]);
+    return { jobs, dependencies };
+  }
+
+  /**
+   * 🕸️ GESTIÓN DE DEPENDENCIAS
    */
   @Post('dependencies')
   @HttpCode(HttpStatus.CREATED)
@@ -50,61 +79,14 @@ export class JobsController {
     );
   }
 
-  /**
-   * 📊 DATOS PARA DIAGRAMA DE GANTT
-   * Retorna los trabajos y sus conexiones de un proyecto específico
-   */
-  @Get('project/:projectId/gantt')
-  async getGanttData(@Param('projectId', ParseUUIDPipe) projectId: string) {
-    // Obtenemos los trabajos y las dependencias en paralelo
-    const [jobs, dependencies] = await Promise.all([
-      this.jobsService.findByProject(projectId), // Asegúrate de tener este método en JobsService
-      this.dependencyService.getDependenciesByProject(projectId),
-    ]);
-
-    return { jobs, dependencies };
-  }
-
-  /**
-   * 🗑️ ELIMINAR DEPENDENCIA
-   */
   @Delete('dependencies/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async removeDependency(@Param('id') id: string) {
-    // LLAMAMOS AL SERVICIO, NO AL REPO
+  async removeDependency(@Param('id', ParseUUIDPipe) id: string) {
     return await this.dependencyService.removeDependency(id);
   }
-  /**
-   * 📊 HISTORIAL GLOBAL (Nuevo para Dashboard PMI)
-   * Trae los logs de todos los trabajos con sus relaciones.
-   */
-  @Get('all/logs')
-  async getGlobalLogs() {
-    return await this.jobsService.getGlobalLogs();
-  }
 
   /**
-   * 📜 HISTORIAL POR TAREA
-   */
-  @Get(':id/logs')
-  async getLogs(@Param('id', ParseUUIDPipe) id: string) {
-    return await this.jobsService.getJobLogs(id);
-  }
-
-  /**
-   * 💾 REGISTRO MANUAL DE ACTIVIDAD
-   */
-  @Post(':id/logs')
-  @HttpCode(HttpStatus.CREATED)
-  async createLog(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() logData: any,
-  ) {
-    return await this.jobsService.saveJobLog(id, logData);
-  }
-
-  /**
-   * 🚀 SUBIDA DE ARCHIVOS FÍSICOS
+   * 📂 GESTIÓN DE ARCHIVOS Y ADJUNTOS
    */
   @Post(':id/upload')
   @UseInterceptors(
@@ -135,15 +117,12 @@ export class JobsController {
         nombre: file.originalname,
         url: relativePath,
         tipo: 'file',
-        size: file.size, // 👈 Guardamos el tamaño real en bytes (Multer lo da por defecto)
+        size: file.size,
       },
       usuario || 'Usuario Sedapar',
     );
   }
 
-  /**
-   * 🔗 VINCULACIÓN DE ENLACES EXTERNOS
-   */
   @Post(':id/links')
   async addLink(
     @Param('id', ParseUUIDPipe) id: string,
@@ -156,26 +135,26 @@ export class JobsController {
     );
   }
 
-  // --- GESTIÓN DE TAREAS ---
-
+  /**
+   * 🛠️ GESTIÓN INDIVIDUAL DE TRABAJOS
+   */
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() taskData: any) {
     return await this.jobsService.create(taskData);
   }
 
-  @Get('my-tasks/:userId')
-  async getMyTasks(@Param('userId', ParseUUIDPipe) userId: string) {
-    return await this.jobsService.findByUser(userId);
+  @Get(':id')
+  async findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return await this.jobsService.findOne(id);
   }
 
-  @Get('calendar/:userId')
-  async getCalendar(
-    @Param('userId', ParseUUIDPipe) userId: string,
-    @Query('start') start: string,
-    @Query('end') end: string,
+  @Patch(':id')
+  async update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateJobDto: any,
   ) {
-    return await this.jobsService.findByDateRange(userId, start, end);
+    return await this.jobsService.update(id, updateJobDto);
   }
 
   @Patch(':id/status')
@@ -191,16 +170,42 @@ export class JobsController {
     );
   }
 
-  @Get(':id')
-  async findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return await this.jobsService.findOne(id);
+  /**
+   * 📅 CONSULTAS POR USUARIO / CALENDARIO
+   */
+  @Get('my-tasks/:userId')
+  async getMyTasks(@Param('userId', ParseUUIDPipe) userId: string) {
+    return await this.jobsService.findByUser(userId);
   }
 
-  @Patch(':id')
-  async update(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() updateJobDto: any,
+  @Get('calendar/:userId')
+  async getCalendar(
+    @Param('userId', ParseUUIDPipe) userId: string,
+    @Query('start') start: string,
+    @Query('end') end: string,
   ) {
-    return await this.jobsService.update(id, updateJobDto);
+    return await this.jobsService.findByDateRange(userId, start, end);
+  }
+
+  /**
+   * 📜 LOGS Y AUDITORÍA
+   */
+  @Get('all/logs')
+  async getGlobalLogs() {
+    return await this.jobsService.getGlobalLogs();
+  }
+
+  @Get(':id/logs')
+  async getLogs(@Param('id', ParseUUIDPipe) id: string) {
+    return await this.jobsService.getJobLogs(id);
+  }
+
+  @Post(':id/logs')
+  @HttpCode(HttpStatus.CREATED)
+  async createLog(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() logData: any,
+  ) {
+    return await this.jobsService.saveJobLog(id, logData);
   }
 }

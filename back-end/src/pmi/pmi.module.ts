@@ -6,11 +6,13 @@ import { PmiService } from './pmi.service';
 // Importamos las entidades necesarias
 import { Project } from '../auth/entities/project.entity';
 import { User } from '../auth/entities/user.entity';
-import { Resource } from '../auth/entities/resource.entity'; // 🚀 IMPORTANTE: Añade esta línea
+import { Resource } from '../auth/entities/resource.entity'; 
+import { Milestone } from '../auth/entities/milestone.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Project, User, Resource]), // 👈 Sincronizado
+    // 👈 AÑADIMOS MILESTONE AL ARREGLO
+    TypeOrmModule.forFeature([Project, User, Resource, Milestone]), 
   ],
   controllers: [PmiController],
   providers: [PmiService],

@@ -20,13 +20,11 @@ import { ProjectService } from './project/project.service';
 
 @Module({
   imports: [
-    // 1. Configuración Global de Variables de Entorno
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '../.env', 
     }),
 
-    // 2. Conexión Asíncrona a PostgreSQL con TypeORM
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -39,30 +37,33 @@ import { ProjectService } from './project/project.service';
         database: config.get<string>('DB_NAME'),
         
         autoLoadEntities: true, 
-        synchronize: true, 
-        dropSchema: true, 
+        synchronize: true, // Mantener en true solo en desarrollo
+        
+        dropSchema: true, //(Esto borraba tu DB en cada reinicio)
+        
+
+        retryAttempts: 10,
+        retryDelay: 3000,
+        keepConnectionAlive: true,
+        
+        extra: {
+          max: 10, // Pool de conexiones
+          connectionTimeoutMillis: 2000,
+          idleTimeoutMillis: 30000,
+        },
+
         logging: ['error', 'warn'],
       }),
     }),
 
-    // 3. Registro de Entidades para Inyección
-    // 🚀 AÑADIMOS 'User' AQUÍ PARA QUE PmiService PUEDA RESOLVER EL UserRepository
     TypeOrmModule.forFeature([Project, Job, User, Pago]), 
 
-    // 4. Integración de Módulos Funcionales
     AuthModule,
     JobsModule,
     PmiModule,
     UserModule,
   ],
-  controllers: [
-    ProjectController,
-    // Nota: PmiController ya debería estar en PmiModule, 
-    // pero lo mantenemos aquí si prefieres manejo centralizado.
-  ],
-  providers: [
-    ProjectService,
-    // Nota: PmiService ya debería estar en PmiModule.
-  ],
+  controllers: [ProjectController],
+  providers: [ProjectService],
 })
 export class AppModule {}

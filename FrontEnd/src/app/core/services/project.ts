@@ -15,13 +15,16 @@ export class ProjectService {
   
   // URL base apuntando al controlador de proyectos en tu NestJS
   private readonly API_URL = `${environment.apiUrl}/project`; 
+  
+  // 👈 NUEVO: URL apuntando al controlador PMI para los hitos
+  private readonly PMI_API_URL = `${environment.apiUrl}/pmi/projects`;
 
   // --- SIGNALS DE ESTADO ---
   // Almacena la lista de proyectos recuperados
   private _projects = signal<Project[]>([]);
   public userProjects = this._projects.asReadonly();
   
-  // Rastra el ID del proyecto seleccionado actualmente
+  // Rastrea el ID del proyecto seleccionado actualmente
   public selectedProjectId = signal<string | null>(null);
 
   /**
@@ -76,8 +79,6 @@ export class ProjectService {
 
   /**
    * 🎯 CAMBIAR PROYECTO SELECCIONADO
-   * Al actualizar el Signal selectedProjectId, todos los "computed" y "effects"
-   * que dependan de él se dispararán automáticamente (como el Gantt).
    */
   setSelectedProject(id: string): void {
     if (this.selectedProjectId() !== id) {
@@ -87,10 +88,37 @@ export class ProjectService {
 
   /**
    * 🧹 LIMPIEZA
-   * Útil para cuando el usuario cierra sesión.
    */
   clearProjects(): void {
     this._projects.set([]);
     this.selectedProjectId.set(null);
+  }
+
+  // ==========================================
+  // 📌 CRUD DE HITOS (MILESTONES)
+  // ==========================================
+
+  /**
+   * ➕ CREAR Hito
+   * POST /pmi/projects/:projectId/milestones
+   */
+  createMilestone(projectId: string, data: any): Observable<any> {
+    return this.http.post(`${this.PMI_API_URL}/${projectId}/milestones`, data);
+  }
+
+  /**
+   * ✏️ ACTUALIZAR Hito
+   * PATCH /pmi/projects/:projectId/milestones/:milestoneId
+   */
+  updateMilestone(projectId: string, milestoneId: string, data: any): Observable<any> {
+    return this.http.patch(`${this.PMI_API_URL}/${projectId}/milestones/${milestoneId}`, data);
+  }
+
+  /**
+   * 🗑️ ELIMINAR Hito
+   * DELETE /pmi/projects/:projectId/milestones/:milestoneId
+   */
+  deleteMilestone(projectId: string, milestoneId: string): Observable<any> {
+    return this.http.delete(`${this.PMI_API_URL}/${projectId}/milestones/${milestoneId}`);
   }
 }
