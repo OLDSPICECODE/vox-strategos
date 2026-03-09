@@ -1,5 +1,4 @@
-// src/environments/environment.ts
 export const environment = {
-  production: false,
-  apiUrl: 'http://localhost:3000' // Tu URL de backend
+  production: true,
+  apiUrl: 'https://tu-url-api-ngrok.ngrok-free.app' // 👈 Cambia esto por la URL de tu API
 };
