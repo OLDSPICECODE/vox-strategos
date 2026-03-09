@@ -131,8 +131,8 @@ export class ProjectBuilderComponent implements OnInit {
   public projectBudget = computed(() => {
     const project = this.activeProject();
     return {
-      total: project?.presupuesto || 0,
-      gastado: 0, // Se queda en 0 temporalmente
+      total: project?.presupuestoTotal || 0,
+      gastado: project?.presupuestoConsumido || 0, // 👈 Ya usamos el nuevo campo
       moneda: 'PEN',
     };
   });

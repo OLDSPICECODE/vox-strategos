@@ -236,7 +236,9 @@
               <div class="mt-6 h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
                 <div
                   class="h-full bg-primary shadow-[0_0_10px_rgba(17,115,212,0.6)]"
-                  [style.width.%]="(project.presupuestoConsumido / project.presupuestoTotal) * 100"
+                  [style.width.%]="
+                    ((project.presupuestoConsumido || 0) / (project.presupuestoTotal || 1)) * 100
+                  "
                 ></div>
               </div>
             </div>

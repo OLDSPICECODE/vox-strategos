@@ -28,9 +28,10 @@ export interface Project {
   progreso: number;
   estado: string;
 
-  // 🚀 CAMPOS FINANCIEROS (Actualizados a la nueva BD)
-  presupuesto: number; // 👈 Esto soluciona tu error TS2339
-  movimientos?: Pago[]; // 👈 La nueva relación para calcular el gasto real
+  // 🚀 CAMPOS FINANCIEROS (Sincronizados con PostgreSQL)
+  presupuestoTotal: number;      
+  presupuestoConsumido?: number; 
+  movimientos?: Pago[];          
 
   // 🚀 CAMPOS DE CONTROL PMI
   objetivos: string[];
@@ -38,10 +39,10 @@ export interface Project {
 
   // RELACIONES
   trabajos: Job[];
-  trabajadores: any[]; // Idealmente, si tienes un modelo User, cámbialo a User[]
-  pmis: any[]; // Idealmente User[]
+  trabajadores: any[]; 
+  pmis: any[];         
 
-  /**
+  /**s
    * 📜 BITÁCORA ESPECÍFICA DEL PROYECTO
    */
   logs?: any[];

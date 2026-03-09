@@ -56,7 +56,7 @@ export class PmiDashboardComponent implements OnInit {
       id: project.id,
       nombre: project.nombre,
       progreso: project.progreso || 0,
-      presupuesto: project.presupuesto || 0,
+      presupuesto: project.presupuestoTotal || 0,
       presupuestoConsumido: consumido,
       tasks_count: project.trabajos?.length || 0,
       milestones_completed: project.hitos?.filter((h: any) => h.estado === 'COMPLETO').length || 0,
