@@ -1,22 +1,33 @@
 version: "3.8"
 
 services:
+  # --- TU BACKEND (Node.js/NestJS) ---
+  backend:
+    build: 
+      context: ./backend # Ajusta a tu carpeta de backend
+    container_name: vox-strategos-api
+    restart: always
+    environment:
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+    networks:
+      - vox-internal
+    depends_on:
+      db:
+        condition: service_healthy
+
   # --- FRONTEND (NGINX + ANGULAR) ---
   frontend:
     build:
-      context: ./FrontEnd  # 👈 Corregido: Coincide con tu carpeta
-      dockerfile: Dockerfile
+      context: ./FrontEnd
+      dockerfile: Dockerfile.prod
     container_name: vox-strategos-front-prod
     restart: always
     networks:
       - vox-internal
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+    depends_on:
+      - backend
 
-  # --- DATABASE (POSTGRESQL) ---
+  # --- DATABASE ---
   db:
     image: postgres:15-alpine
     container_name: vox-strategos-db-prod
@@ -34,23 +45,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      
-  # --- PGADMIN (MANTENIMIENTO) ---
-  pgadmin:
-    image: dpage/pgadmin4
-    container_name: vox-strategos-pgadmin-prod
-    restart: unless-stopped
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
-      PGADMIN_CONFIG_SERVER_MODE: "False"
-    networks:
-      - vox-internal
-    depends_on:
-      db:
-        condition: service_healthy
 
-  # --- NGROK (PROXIED ACCESS) ---
+  # --- NGROK ---
   ngrok:
     image: ngrok/ngrok:latest
     container_name: vox-strategos-ngrok-prod
