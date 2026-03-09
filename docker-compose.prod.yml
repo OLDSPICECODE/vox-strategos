@@ -4,7 +4,7 @@ services:
   # --- TU BACKEND (Node.js/NestJS) ---
   backend:
     build: 
-      context: ./backend # Ajusta a tu carpeta de backend
+      context: ./back-end # Ajusta a tu carpeta de backend
     container_name: vox-strategos-api
     restart: always
     environment:
