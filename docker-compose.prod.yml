@@ -34,7 +34,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
+      
   # --- PGADMIN (MANTENIMIENTO) ---
   pgadmin:
     image: dpage/pgadmin4
