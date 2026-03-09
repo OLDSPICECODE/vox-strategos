@@ -1,10 +1,10 @@
 version: "3.8"
 
 services:
-  # --- TU BACKEND (Node.js/NestJS) ---
+  # --- BACKEND (Node.js) ---
   backend:
     build: 
-      context: ./back-end # Ajusta a tu carpeta de backend
+      context: ./back-end  # Carpeta con guion
     container_name: vox-strategos-api
     restart: always
     environment:
@@ -19,7 +19,7 @@ services:
   frontend:
     build:
       context: ./FrontEnd
-      dockerfile: dockerfile
+      dockerfile: dockerfile  # Tu archivo en minúsculas
     container_name: vox-strategos-front-prod
     restart: always
     networks:
@@ -27,7 +27,7 @@ services:
     depends_on:
       - backend
 
-  # --- DATABASE ---
+  # --- DATABASE (POSTGRESQL) ---
   db:
     image: postgres:15-alpine
     container_name: vox-strategos-db-prod
