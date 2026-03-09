@@ -5,7 +5,7 @@ services:
   frontend:
     build:
       context: ./FrontEnd  # 👈 Corregido: Coincide con tu carpeta
-      dockerfile: Dockerfile.prod
+      dockerfile: Dockerfile
     container_name: vox-strategos-front-prod
     restart: always
     networks:
