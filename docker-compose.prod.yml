@@ -1,10 +1,11 @@
 version: "3.8"
 
 services:
-  # --- BASE DE DATOS ---
+  # --- 1. BASE DE DATOS (POSTGRESQL) ---
   db:
     image: postgres:15-alpine
     container_name: vox-db-prod
+    restart: always
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -14,39 +15,49 @@ services:
     networks:
       - vox-net-prod
     healthcheck:
+      # Verifica que la base de datos esté lista antes de que el backend intente conectar
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
       retries: 5
 
-  # --- BACKEND ---
+  # --- 2. BACKEND (NESTJS) ---
   backend:
     build: ./back-end
     container_name: vox-api-prod
+    restart: always
+    # Pasamos las variables de entorno individuales que tu AppModule.ts está buscando
     environment:
-      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
       - PORT=3000
+      - NODE_ENV=production
     depends_on:
       db:
         condition: service_healthy
     networks:
       - vox-net-prod
 
-  # --- FRONTEND (Angular + Nginx) ---
+  # --- 3. FRONTEND (ANGULAR + NGINX) ---
   frontend:
     build:
       context: ./FrontEnd
-      dockerfile: dockerfile # Tu archivo en minúsculas
+      dockerfile: dockerfile 
     container_name: vox-front-prod
+    restart: always
     depends_on:
       - backend
     networks:
       - vox-net-prod
 
-  # --- NGROK ---
+  # --- 4. TÚNEL (NGROK) ---
   ngrok:
     image: ngrok/ngrok:latest
     container_name: vox-ngrok-prod
+    restart: always
     environment:
       - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
     command:
@@ -57,6 +68,7 @@ services:
     depends_on:
       - frontend
 
+# --- REDES Y VOLÚMENES ---
 networks:
   vox-net-prod:
     driver: bridge
