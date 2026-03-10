@@ -1,69 +1,65 @@
 version: "3.8"
 
 services:
-  # --- BACKEND (Node.js) ---
-  backend:
-    build: 
-      context: ./back-end  # Carpeta con guion
-    container_name: vox-strategos-api
-    restart: always
-    environment:
-      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
-    networks:
-      - vox-internal
-    depends_on:
-      db:
-        condition: service_healthy
-
-  # --- FRONTEND (NGINX + ANGULAR) ---
-  frontend:
-    build:
-      context: ./FrontEnd
-      dockerfile: dockerfile  # Tu archivo en minúsculas
-    container_name: vox-strategos-front-prod
-    restart: always
-    networks:
-      - vox-internal
-    depends_on:
-      - backend
-
-  # --- DATABASE (POSTGRESQL) ---
+  # --- BASE DE DATOS ---
   db:
     image: postgres:15-alpine
-    container_name: vox-strategos-db-prod
-    restart: always
+    container_name: vox-db-prod
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
     volumes:
-      - postgres_prod_data:/var/lib/postgresql/data
+      - pg_data_prod:/var/lib/postgresql/data
     networks:
-      - vox-internal
+      - vox-net-prod
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
+  # --- BACKEND ---
+  backend:
+    build: ./back-end
+    container_name: vox-api-prod
+    environment:
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      - PORT=3000
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - vox-net-prod
+
+  # --- FRONTEND (Angular + Nginx) ---
+  frontend:
+    build:
+      context: ./FrontEnd
+      dockerfile: dockerfile # Tu archivo en minúsculas
+    container_name: vox-front-prod
+    depends_on:
+      - backend
+    networks:
+      - vox-net-prod
+
   # --- NGROK ---
   ngrok:
     image: ngrok/ngrok:latest
-    container_name: vox-strategos-ngrok-prod
-    restart: always
+    container_name: vox-ngrok-prod
     environment:
-      - NGROK_AUTHTOKEN=3AB4V7tE79QzgXfE4dppz7ax4W4_7ypQZhcLTqxzixU9HWAwA
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
     command:
       - "http"
       - "frontend:80"
     networks:
-      - vox-internal
+      - vox-net-prod
     depends_on:
       - frontend
 
 networks:
-  vox-internal:
+  vox-net-prod:
     driver: bridge
 
 volumes:
-  postgres_prod_data:
+  pg_data_prod:

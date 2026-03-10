@@ -2,33 +2,29 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 
-# Aumentamos la memoria asignada a Node para evitar que el build falle
+# Ajuste de memoria para evitar que el build de Angular falle en servidores pequeños
 ENV NODE_OPTIONS="--max-old-space-size=2048"
 
-# Copiamos archivos de dependencias
+# Evitar errores de red/timeout en npm
+RUN npm config set registry https://registry.npmjs.org/ && \
+    npm config set fetch-retry-maxtimeout 120000
+
 COPY package*.json ./
+RUN npm install
 
-# Instalamos dependencias limpias
-RUN npm ci || npm install
-
-# Copiamos todo el código
 COPY . .
 
-# Ejecutamos el build. 
-# Si tu configuración está en environment.ts, usa este comando:
-RUN npm run build -- --output-path=dist/FrontEnd
+# Generar los archivos estáticos de Angular
+# Nota: Usamos el environment.ts que tiene apiUrl: '/api'
+RUN npm run build
 
 # Etapa 2: Servidor Web (Nginx)
 FROM nginx:stable-alpine
 
-# Borramos la configuración por defecto de Nginx
-RUN rm /etc/nginx/conf.d/default.conf
-
-# Copiamos nuestra configuración (el proxy inverso)
+# Copiamos la configuración del Proxy Inverso
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copiamos los archivos generados. 
-# OJO: Verifica si la ruta es /app/dist/FrontEnd/browser o solo /app/dist/FrontEnd
+# Copiamos el build final (ajustado a tu carpeta 'browser' que vimos en la imagen)
 COPY --from=build /app/dist/FrontEnd/browser /usr/share/nginx/html
 
 EXPOSE 80

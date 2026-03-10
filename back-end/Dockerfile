@@ -1,25 +1,22 @@
-# Usa una versión de Node.js ligera
+# Usa una imagen ligera de Node
 FROM node:20-alpine
 
 # Crear directorio de trabajo
 WORKDIR /app
 
-# Copiar archivos de dependencias
-COPY package*.json ./
+# Configuración para evitar errores de conexión con npm
+RUN npm config set registry https://registry.npmjs.org/
 
-# Instalar dependencias (incluyendo las necesarias para NestJS o Express)
+# Instalar dependencias primero (para aprovechar el caché de Docker)
+COPY package*.json ./
 RUN npm install
 
-# Copiar el resto del código del backend
+# Copiar el resto del código fuente
 COPY . .
 
-# Si usas NestJS o TypeScript, descomenta la siguiente línea para compilar:
-# RUN npm run build
-
-# Exponer el puerto que usa tu API
+# Exponer el puerto que usa tu API de Node/Express
 EXPOSE 3000
 
-# Comando para arrancar el servidor
-# Si usas NestJS en prod suele ser: CMD ["node", "dist/main"]
-# Si usas Node directo: CMD ["node", "index.js"] o ["npm", "start"]
+# Comando para iniciar el servidor
+# Asegúrate de tener un script "start" en tu package.json
 CMD ["npm", "start"]
