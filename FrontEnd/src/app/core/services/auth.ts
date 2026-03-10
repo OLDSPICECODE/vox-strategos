@@ -1,19 +1,22 @@
 import { Injectable, signal, inject } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { UserRole } from '../../shared/models/user-role.enum';
 import { tap, catchError } from 'rxjs/operators';
 import { Observable, throwError } from 'rxjs';
 import { User } from '../../shared/models/user';
+// 👇 IMPORTANTE: Importa el environment
+import { environment } from '../../../environments/environment';
+
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
   private http = inject(HttpClient);
   private router = inject(Router);
-  private readonly API_URL = 'http://localhost:3000/auth'; 
+  
+  // 🚀 CAMBIO CLAVE: Usamos la variable del environment en lugar de localhost
+  private readonly API_URL = `${environment.apiUrl}/auth`; 
 
-  // Guardamos el objeto completo del usuario
   currentUser = signal<User | null>(null);
 
   constructor() {
@@ -21,7 +24,7 @@ export class AuthService {
   }
 
   login(email: string, password: string): Observable<User> {
-    console.log('📡 Enviando credenciales a Vox Strategos Backend...');
+    console.log(`📡 Conectando a Vox Strategos API en: ${this.API_URL}/login`);
     
     return this.http.post<User>(`${this.API_URL}/login`, { email, password }).pipe(
       tap(user => {
@@ -35,7 +38,6 @@ export class AuthService {
 
   private saveSession(user: User) {
     this.currentUser.set(user);
-    // Persistencia en LocalStorage para no perder sesión al refrescar
     localStorage.setItem('user_data', JSON.stringify(user));
   }
 
@@ -53,16 +55,18 @@ export class AuthService {
 
   logout() {
     this.currentUser.set(null);
-    localStorage.removeItem('user_data'); // Limpieza selectiva
+    localStorage.removeItem('user_data');
     this.router.navigate(['/login']);
   }
 
   private handleError(error: HttpErrorResponse) {
     let msg = 'Error desconocido';
-    if (error.status === 401) {
+    if (error.status === 0) {
+      msg = 'No se pudo conectar con el servidor. Revisa tu conexión o el proxy.';
+    } else if (error.status === 401) {
       msg = 'Credenciales inválidas. Jurisdicción denegada.';
     } else if (error.status === 404) {
-      msg = 'El servidor de Vox Strategos no responde (404).';
+      msg = 'Ruta no encontrada en el servidor de Vox Strategos.';
     }
     console.error(`[AuthService Error]: ${msg}`, error);
     return throwError(() => new Error(msg));

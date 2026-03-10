@@ -2,6 +2,8 @@ import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient, HttpParams, HttpErrorResponse } from '@angular/common/http';
 import { Observable, catchError, throwError, tap, firstValueFrom } from 'rxjs';
 import { Job, JobAttachment } from '../../shared/models/job';
+// 🚀 IMPORTANTE: Importamos el environment para que sea dinámico
+import { environment } from '../../../environments/environment';
 
 /**
  * Interfaz para el historial de actividad técnica (Logs).
@@ -21,7 +23,9 @@ export interface JobActivity {
 })
 export class JobsService {
   private http = inject(HttpClient);
-  private readonly API_URL = 'http://localhost:3000/jobs';
+
+  // 🛰️ DINÁMICO: En prod será '/api/jobs' y en dev 'http://localhost:3000/jobs'
+  private readonly API_URL = `${environment.apiUrl}/jobs`;
 
   // 🚀 SIGNAL: Estado reactivo de las tareas en la UI
   private _tasks = signal<Job[]>([]);
@@ -114,10 +118,9 @@ export class JobsService {
   // ==========================================
 
   /**
-   * 📥 DESCARGA DE ARCHIVOS (Resuelve el error TS2339)
+   * 📥 DESCARGA DE ARCHIVOS
    */
   downloadFile(url: string): Observable<Blob> {
-    // Es importante usar responseType: 'blob' para que Angular no intente parsear el archivo como JSON
     return this.http.get(url, { responseType: 'blob' }).pipe(
       catchError((error: HttpErrorResponse) => {
         return throwError(() => new Error('El archivo no está disponible en el servidor.'));
@@ -179,10 +182,12 @@ export class JobsService {
 
   private handleError(error: HttpErrorResponse) {
     let errorMessage = 'Error en el sistema Vox Strategos.';
-    if (error.error instanceof ErrorEvent) {
+    if (error.status === 0) {
+      errorMessage = 'No se pudo establecer conexión con el servidor de la API.';
+    } else if (error.error instanceof ErrorEvent) {
       errorMessage = `Error de Red: ${error.error.message}`;
     } else {
-      errorMessage = error.error?.message || `Código: ${error.status}`;
+      errorMessage = error.error?.message || `Código de error: ${error.status}`;
     }
     return throwError(() => new Error(errorMessage));
   }
