@@ -81,16 +81,51 @@ export class PmiController {
     return await this.pmiService.getDetailedBudgetReport();
   }
 
-  // --- EQUIPOS Y HITOS ---
+  // ==========================================
+  // 📌 GESTIÓN DE HITOS ESTRATÉGICOS (CRUD)
+  // ==========================================
 
-  @Post('projects/:id/milestones')
-  async addMilestone(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() milestone: { nombre: string; fecha: string; descripcion: string },
+  @Post('projects/:projectId/milestones')
+  async createMilestone(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Body()
+    milestoneData: {
+      nombre: string;
+      fecha: string;
+      estado: string;
+      descripcion?: string;
+    },
   ) {
-    // Almacena hitos en el campo simple-json de la entidad Project
-    return await this.pmiService.addMilestoneToProject(id, milestone);
+    // ➕ Crea un hito en la tabla Milestone vinculada al proyecto
+    return await this.pmiService.createMilestone(projectId, milestoneData);
   }
+
+  @Patch('projects/:projectId/milestones/:milestoneId')
+  async updateMilestone(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('milestoneId', ParseUUIDPipe) milestoneId: string,
+    @Body() updateData: any,
+  ) {
+    // ✏️ Actualiza un hito existente
+    return await this.pmiService.updateMilestone(
+      projectId,
+      milestoneId,
+      updateData,
+    );
+  }
+
+  @Delete('projects/:projectId/milestones/:milestoneId')
+  async deleteMilestone(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('milestoneId', ParseUUIDPipe) milestoneId: string,
+  ) {
+    // 🗑️ Elimina el hito de la base de datos
+    return await this.pmiService.deleteMilestone(projectId, milestoneId);
+  }
+
+  // ==========================================
+  // --- DASHBOARD & MÉTRICAS DINÁMICAS ---
+  // ==========================================
 
   @Get('storage')
   async getStorageUsage() {
@@ -110,7 +145,6 @@ export class PmiController {
       path: 'uploads/',
     };
   }
-  // --- DASHBOARD & MÉTRICAS DINÁMICAS ---
 
   @Get('dashboard/:projectId/stats')
   async getProjectStats(@Param('projectId', ParseUUIDPipe) projectId: string) {
@@ -128,8 +162,10 @@ export class PmiController {
   }
 
   @Get('activity/:projectId')
-async getProjectActivity(@Param('projectId', ParseUUIDPipe) projectId: string) {
-  // Retorna los logs de tareas vinculados a este proyecto
-  return await this.pmiService.getRecentActivity(projectId);
-}
+  async getProjectActivity(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+  ) {
+    // Retorna los logs de tareas vinculados a este proyecto
+    return await this.pmiService.getRecentActivity(projectId);
+  }
 }
