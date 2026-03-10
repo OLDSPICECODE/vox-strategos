@@ -1,4 +1,3 @@
-// src/main.ts
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe, Logger } from '@nestjs/common';
@@ -8,65 +7,56 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
 
-  /**
-   * 1. Inicialización de la aplicación
-   * Habilitamos NestExpressApplication para el manejo de archivos estáticos.
-   */
+  // 1. Inicialización
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  /**
-   * 2. Configuración de Pipes Globales (CRÍTICO para DTOs)
-   * Esto permite que las validaciones de UpdateUserDto funcionen automáticamente.
-   */
+  // 2. Pipes Globales (Validación de DTOs)
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true, // Remueve propiedades que no estén en el DTO.
-      forbidNonWhitelisted: true, // Lanza error si envían datos no permitidos.
-      transform: true, // Transforma los tipos de los payloads a los definidos en el DTO.
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
     }),
   );
 
   /**
-   * 3. Configuración de Prefijo Global (Opcional pero recomendado)
-   * Si decides usar /api/user, descomenta la línea de abajo.
-   */
-  // app.setGlobalPrefix('api');
-
-  /**
-   * 4. Configuración de CORS
-   * Permitimos la conexión desde tu frontend de Angular (localhost:4200).
+   * 3. Configuración de CORS Dinámico
+   * Si en el .env existe CORS_ORIGIN lo usa, si no, permite todo ('*').
+   * En producción (Docker/Nginx), '*' es lo más seguro para evitar el error de status 0.
    */
   app.enableCors({
-    origin: 'http://localhost:4200',
+    origin: process.env.CORS_ORIGIN || '*', 
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
     exposedHeaders: ['Content-Disposition'],
   });
 
   /**
-   * 5. Configuración de Servidor de Archivos Estáticos
-   * Mapea la carpeta física 'uploads' a la ruta virtual '/uploads'.
+   * 4. Servidor de Archivos Estáticos
+   * El path se construye dinámicamente según la carpeta donde se ejecute.
    */
   const pathDeSubidas = join(process.cwd(), 'uploads');
   
   app.useStaticAssets(pathDeSubidas, {
     prefix: '/uploads/',
     setHeaders: (res) => {
-      // Forzamos descarga para evitar conflictos con el router de Angular.
       res.set('Content-Disposition', 'attachment');
-      res.set('Access-Control-Allow-Origin', 'http://localhost:4200');
+      res.set('Access-Control-Allow-Origin', '*');
     },
   });
 
   /**
-   * 6. Arranque del Servidor
+   * 5. Arranque del Servidor
+   * En Docker es VITAL escuchar en '0.0.0.0' para que el contenedor sea accesible.
    */
-  const port = process.env.PORT ?? 3000;
-  await app.listen(port);
+  const port = process.env.PORT || 3000;
+  
+  await app.listen(port, '0.0.0.0');
 
   console.log('---------------------------------------------------------');
-  logger.log(`📂 Archivos estáticos servidos desde: ${pathDeSubidas}`);
-  logger.log(`🚀 Vox Strategos Backend corriendo en: http://localhost:${port}`);
+  logger.log(`🚀 Servidor corriendo en el puerto: ${port}`);
+  logger.log(`📂 Subidas configuradas en: ${pathDeSubidas}`);
+  logger.log(`🌍 Entorno actual: ${process.env.NODE_ENV || 'development'}`);
   console.log('---------------------------------------------------------');
 }
 

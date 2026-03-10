@@ -20,35 +20,40 @@ import { ProjectService } from './project/project.service';
 
 @Module({
   imports: [
+    // 1. Configuración global de variables de entorno
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '../.env', 
+      // No hace falta envFilePath en Docker, Nest lee automáticamente las variables del sistema
     }),
 
+    // 2. Conexión Asíncrona a la Base de Datos
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         type: 'postgres',
+        // Si DB_HOST no existe (local), usa 'localhost'. En Docker usará 'db'
         host: config.get<string>('DB_HOST') || 'localhost',
-        port: config.get<number>('DB_PORT') || 5435,
+        // Puerto interno de Postgres en Docker es 5432. Local usas 5435.
+        port: config.get<number>('DB_PORT') || 5432,
         username: config.get<string>('DB_USER'),
         password: config.get<string>('DB_PASSWORD'),
         database: config.get<string>('DB_NAME'),
         
         autoLoadEntities: true, 
-        synchronize: true, // Mantener en true solo en desarrollo
         
-        dropSchema: true, //(Esto borraba tu DB en cada reinicio)
-        
+        // --- ADVERTENCIAS CRÍTICAS ---
+        synchronize: true,   // Útil para crear tablas automáticamente al inicio
+        dropSchema: false,   // 👈 CAMBIADO A FALSE: Evita que se borren tus datos al reiniciar
+        // -----------------------------
 
         retryAttempts: 10,
         retryDelay: 3000,
         keepConnectionAlive: true,
         
         extra: {
-          max: 10, // Pool de conexiones
-          connectionTimeoutMillis: 2000,
+          max: 10, 
+          connectionTimeoutMillis: 5000,
           idleTimeoutMillis: 30000,
         },
 

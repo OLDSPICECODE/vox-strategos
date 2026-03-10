@@ -1,13 +1,19 @@
 import { Controller, Get } from '@nestjs/common';
 import { AppService } from './app.service';
 
-@Controller() // Sin prefijo, responde a la raíz http://localhost:3000
+@Controller() 
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
   @Get()
   getHello(): string {
-    // Llama al mensaje de bienvenida del AppService
-    return this.appService.getHello();
+    // Esto te servirá para entrar a la URL de ngrok/api y ver si el back responde
+    return '🚀 Vox Strategos API is Online';
+  }
+
+  // Opcional: Un endpoint de salud para Docker
+  @Get('health')
+  checkHealth() {
+    return { status: 'ok', uptime: process.uptime() };
   }
 }
